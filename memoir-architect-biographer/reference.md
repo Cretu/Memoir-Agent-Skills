@@ -61,12 +61,12 @@ Alternating past and present. Best for:
 
 ## Outline Format
 
-```
-Chapter [N]: [Title]
-  Theme: [One-line theme description]
-  Key memories: [List]
-  Time period: [Start - End]
-  Purpose: [Narrative function]
+```markdown
+## Chapter [N]: [Title]
+*   **Theme**: [One-line theme description]
+*   **Time Period**: [Start – End]
+*   **Key Memories Included**: `memories/[kebab-case-title].md`, `memories/[another-title].md`
+*   **Narrative Goal**: [Narrative function]
 ```
 
 ## Review Questions

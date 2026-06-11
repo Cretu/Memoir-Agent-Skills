@@ -48,13 +48,15 @@ Part Three: Becoming (Chapters 7-9)
 
 **Chapter Outline: Leaving Home**
 
-| Element | Details |
-|---------|---------|
-| **Theme** | The end of childhood, the beginning of choice |
-| **Time Period** | Summer before university, August |
-| **Key Memories** | Packing, last family dinner, the drive, goodbye |
-| **Purpose** | Show the moment of transition from child to adult |
-| **Tone** | Nostalgic but not maudlin, forward-looking |
+**Chapter Outline: Leaving Home**
+
+```markdown
+## Chapter 2: Leaving Home
+*   **Theme**: The end of childhood, the beginning of choice
+*   **Time Period**: Summer before university, August
+*   **Key Memories Included**: `memories/packing-day.md`, `memories/last-family-dinner.md`, `memories/the-drive-north.md`, `memories/goodbye-at-the-door.md`
+*   **Narrative Goal**: Show the moment of transition from child to adult
+```
 
 **Scene Breakdown**:
 
