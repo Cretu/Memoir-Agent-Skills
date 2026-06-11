@@ -16,7 +16,12 @@ This document defines the voice, tone, and stylistic preferences for the memoir.
 *   **Example**: "The door slammed. It was the loudest sound I had ever heard, echoing through the hallway like a gunshot that signaled the end of my childhood."
 
 ## 4. Sample Passages (Inspiration)
-*(Paste examples of writing you admire or previous successful drafts here)*
+
+**When to populate**: This section is filled in during the **Architect phase (Step 3b)**, before the first Writing session. The Architect skill will prompt you to provide 2–3 sentences in your desired voice, or describe the mood you want; the passages below will be replaced with your own.
+
+**How to calibrate**: Write 2–3 sentences in the tone you want — a moment from your life, a sentence you admire, or a description of a place. That becomes the voice anchor. Then update the Tone Keywords above to match.
+
+**Default examples** (replace with your own):
 
 > "I loved the stillness of the room. It wasn't empty; it was full of potential, like a held breath."
 

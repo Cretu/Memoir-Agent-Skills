@@ -64,7 +64,8 @@ When a memory is sufficiently detailed:
 
 ## 4. Transition
 After saving:
-*   Ask: "Shall we explore another memory, or do you feel you have enough material to start structuring your chapters (Architect Phase)?"
+*   Ask: "Shall we explore another memory, or do you have enough material to move on to the **memoir-architect-biographer** skill (Architect)?"
+*   Note: Before writing begins, the Architect phase also includes a step to calibrate your memoir's voice and tone in `memories/style_guide.md`.
 
 ## 5. Reference: Questioning Techniques
 (Derived from reference.md)

@@ -76,6 +76,43 @@ That sounds like a significant moment. Let's explore it carefully.
 
 ---
 
+---
+
+## Example 5: Complete Session Cycle (Recall → Capture → Save)
+
+This example shows how a full memory recall session ends, including the Memory Capture block and the confirmation-to-save step.
+
+**User Input**: "I remember the morning my father taught me to fish."
+
+**Skill Response** (after several rounds of deepening questions):
+
+We have explored this memory well. Here is your Memory Capture:
+
+```markdown
+### 🧠 Memory Capture: First Fishing Morning
+**Context**: Age 9, summer 1987, the creek behind Grandpa's farm, Father and me
+**Sensory Details**:
+*   [Sight]: Pre-dawn grey light, mist sitting low on the water, my father's red flannel shirt
+*   [Sound]: The soft click of the reel, frogs still going, the line hitting the water
+*   [Smell/Taste/Touch]: Worms from a tin can, cold rod handle, my fingers going numb
+**Key Sequence**:
+1.  Woke before sunrise, found Father already at the door with the gear
+2.  Walked down the hill in the dark without a torch
+3.  He baited my hook without speaking, handed it over
+4.  First cast snagged a branch; he untangled it without irritation
+5.  Second cast held — a long still wait — then the line pulled
+**Emotional Truth**: He never explained anything, just showed me. At the time I thought he was impatient. Now I understand he was teaching me to pay attention.
+**Status**: Ready for Architecture
+```
+
+Shall I save this to `memories/first-fishing-morning.md`?
+
+**User**: Yes, save it.
+
+**Skill**: Saved to `memories/first-fishing-morning.md`. Shall we explore another memory, or do you have enough material to move on to the **memoir-architect-biographer** skill (Architect)?
+
+---
+
 ## Session Format
 
 When conducting a memory recall session:
@@ -85,5 +122,6 @@ When conducting a memory recall session:
 3. **Ask sensory questions** (see, hear, smell, feel)
 4. **Ask narrative questions** (what happened next, before)
 5. **Ask emotional questions** (how did it feel, why mattered)
-6. **Summarize** key points in bullet form (not prose)
-7. **Identify** where to dig deeper next
+6. **Summarize** as a Memory Capture block (not prose paragraphs)
+7. **Confirm with the user** before saving to `memories/`
+8. **Transition** — offer to recall another memory or move to Architect

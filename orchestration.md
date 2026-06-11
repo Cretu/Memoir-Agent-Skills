@@ -2,6 +2,27 @@
 
 This document defines how `memoir-memory-recall`, `memoir-architect-biographer`, and `memoir-writing` are coordinated to create a complete memoir writing workflow.
 
+## Shared Terminology
+
+Use these canonical names and short aliases consistently across all skills and documentation:
+
+| Canonical Name              | Short Alias | Role                        |
+|-----------------------------|-------------|-----------------------------|
+| memoir-memory-recall        | Recall      | Interviewer / Memory Guide  |
+| memoir-architect-biographer | Architect   | Editorial Consultant        |
+| memoir-writing              | Writer      | Literary Ghostwriter        |
+
+## File Contracts
+
+Each skill has a defined set of files it reads and writes. Use this as a reference when starting mid-workflow:
+
+| Skill      | Reads From                                                                 | Writes To                        |
+|------------|----------------------------------------------------------------------------|----------------------------------|
+| Recall     | (none)                                                                     | `memories/[title].md`            |
+| Architect  | `memories/*.md`                                                            | `chapter_outline.md`             |
+|            |                                                                            | `memories/style_guide.md` (updates) |
+| Writer     | `chapter_outline.md`, `memories/style_guide.md`, `memories/[relevant].md` | `chapters/chapter_[N]_[slug].md` |
+
 ## Overview
 
 The three skills form a sequential pipeline:
