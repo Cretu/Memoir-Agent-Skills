@@ -1,9 +1,7 @@
 name: memoir-revision
-description: >
-  A skill to revise and edit completed memoir chapters through ordered passes —
-  developmental, line, continuity — and a final responsibility check for accuracy,
-  fairness to real people, and emotional safety. Strengthens drafts while preserving
-  the writer's voice.
+description: >-
+  Revise drafted memoir chapters in ordered passes (developmental, line,
+  continuity) plus a final accuracy, fairness, and safety check.
 license: MIT
 author: Memoir Agent Skills
 version: 1.0.0

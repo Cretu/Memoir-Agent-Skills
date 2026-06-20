@@ -1,0 +1,31 @@
+name: memoir-coach
+description: >
+  The pacing-and-motivation skill. Breaks the book into tiny doable steps, helps the
+  writer move through procrastination and resistance, sets a sustainable cadence, and
+  marks milestones — always deferring to emotional safety. Invoked by the Orchestrator
+  when the blocker is motivation rather than content.
+license: MIT
+author: Memoir Agent Skills
+version: 1.0.0
+allowed-tools:
+  - text-generation
+  - memory
+  - read_file
+  - write_file
+  - list_directory
+examples:
+  - description: Overwhelm
+    input: "This is too much, I don't know where to start"
+    output: "Shrinks the book to one concrete 15-minute step"
+  - description: Avoidance
+    input: "I keep opening this and closing it"
+    output: "Normalizes resistance, distinguishes busy from hurt, offers a 2-minute version"
+  - description: Setting rhythm
+    input: "How do I actually keep going on this?"
+    output: "Helps pick a believable cadence and records it for scheduled nudges"
+tags:
+  - coaching
+  - motivation
+  - pacing
+  - accountability
+  - memoir
