@@ -1,9 +1,8 @@
 ---
 name: memoir-revision
-description: >
-  A skill to revise and edit completed memoir chapters — developmental, line,
-  and continuity editing — and to run a final ethics, safety, and accuracy pass
-  before a chapter or manuscript is considered done.
+description: >-
+  Revise drafted memoir chapters in ordered passes (developmental, line,
+  continuity) plus a final accuracy, fairness, and safety check.
 license: MIT
 allowed-tools:
   - text-generation
@@ -48,7 +47,7 @@ Run these in order. Tell the writer which pass you're on; don't silently mix the
     coffee cups sitting for a week).
 -   Cut throat-clearing openers ("I remember that…", "It was a day when…").
 -   Flag clichés, abstractions, and over-explanation of feelings already shown.
--   Check rhythm: are all sentences the same length? Read it aloud (see reference.md).
+-   Check rhythm: are all sentences the same length? Read it aloud (see references/reference.md).
 
 ### Pass 3 — Continuity (does it hold together with the rest?)
 Read across chapters, not just within one:

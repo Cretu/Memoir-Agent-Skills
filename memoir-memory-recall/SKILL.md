@@ -81,7 +81,7 @@ After saving:
 *   Note: Before writing begins, the Architect phase also includes a step to calibrate your memoir's voice and tone in `memories/style_guide.md`.
 
 ## 5. Reference: Questioning Techniques
-(Derived from reference.md)
+(Derived from references/reference.md)
 
 *   **Probing**: "Tell me more about..."
 *   **Zooming In**: "Freeze that moment. Look around the room. What do you see on the table?"

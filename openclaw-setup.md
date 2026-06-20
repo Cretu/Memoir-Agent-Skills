@@ -47,12 +47,11 @@ into the workspace so the skills can read them.
    [skill-format doc](https://github.com/openclaw/clawhub/blob/main/docs/skill-format.md).
    OpenClaw runs a security analysis over the declared permissions, so declare the real ones.
 2. **Description ≤ 160 bytes.** OpenClaw caps the `description` frontmatter field at 160
-   bytes. The two new skills here already comply; the original four skills have long
-   multi-line descriptions and must be shortened before they'll load cleanly.
+   bytes. All skills in this repo now comply — keep any future edits under the limit.
 3. **Support-file folders.** OpenClaw expects supplementary files under standard folders:
-   `examples/`, `references/`, `scripts/`, `templates/`, `assets/`. This repo currently uses
-   `EXAMPLES.md`, `reference.md`, and `prompts/`. When porting, map them:
-   `reference.md → references/`, `EXAMPLES.md → examples/`, `prompts/ → templates/`.
+   `examples/`, `references/`, `scripts/`, `templates/`, `assets/`. This repo already follows
+   the convention (`references/reference.md`, `examples/EXAMPLES.md`, and `templates/` for
+   prompt files), so the skill folders drop in as-is.
 4. **`.claude/skills.json` is not used by OpenClaw** — it discovers skills by finding
    `SKILL.md` under the skills root. You can ignore that manifest here; the folder layout is
    what matters.
