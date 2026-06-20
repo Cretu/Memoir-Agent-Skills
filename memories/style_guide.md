@@ -2,6 +2,17 @@
 
 This document defines the voice, tone, and stylistic preferences for the memoir. The **Writer** skill should reference this file to ensure consistency across chapters.
 
+## 0. Project Compass
+
+Set during **Phase 0** (`memoir-purpose-and-audience.md`), before serious recall. This is
+the north star every later phase checks against. A living note — update as the book
+reveals itself.
+
+*   **Reader**: [Family/descendants · The public · Yourself] — *(default placeholder; set in Phase 0)*
+*   **Scope**: [Whole-life · Single thread: ___ · Vignettes]
+*   **About (working theme)**: [One sentence — what is this book really wrestling with?]
+*   **Privacy stance**: [Real names · Some names changed · TBD] — see `memoir-ethics-and-care.md` (Part 2)
+
 ## 1. Tone Keywords
 *   **Restrained**: Avoid melodrama; let the events speak for themselves.
 *   **Observant**: Focus on external details (light, sound, texture) to anchor internal feelings.

@@ -24,6 +24,14 @@ Before doing anything else, use `read_file` to check whether `chapter_outline.md
 -   **Show, Don't Tell**: Use the sensory details captured in the memory phase.
 -   **Restraint**: Avoid melodrama. Let the actions and images carry the emotional weight.
 -   **Consistency**: Adhere to the defined voice and tone.
+-   **Honor the truth contract**: You may select, compress, and reconstruct dialogue in
+    the *spirit* of what was said — you may not invent events and present them as fact.
+    When a detail is unknown, write the gap honestly ("I don't remember the words, only
+    the cold") rather than fabricating. See `memoir-ethics-and-care.md` (Part 3).
+-   **Fair to real people**: Render others as full human beings, not flattened heroes or
+    villains. Tell *your* experience of them; don't assert their inner motives as fact.
+    Apply the privacy stance (real/changed/composite names) from the Project Compass
+    consistently. See `memoir-ethics-and-care.md` (Part 2).
 
 ## 2. Preparation Phase
 Before generating text:
@@ -46,8 +54,8 @@ Before generating text:
 
 ## 5. Transition
 After each chapter is saved:
-*   Ask: "Shall we move on to the next chapter, or would you like to return to the **memoir-memory-recall** skill (Recall) to capture more details, or to the **memoir-architect-biographer** skill (Architect) to revise the structure?"
-*   When all chapters in the outline are complete, confirm with the user: "All chapters are drafted. Would you like a final review pass, or is this memoir ready?"
+*   Ask: "Shall we move on to the next chapter, return to **memoir-memory-recall** (Recall) for more details, **memoir-architect-biographer** (Architect) to revise the structure, or hand this chapter to **memoir-revision** (Reviser) to edit and pressure-test it?"
+*   When all chapters in the outline are complete, recommend the editing phase: "All chapters are drafted. A first draft is just the clay on the wheel — shall we run them through the **memoir-revision** skill (developmental, line, continuity, and a fairness/accuracy pass) before calling the memoir done?"
 
 ## 6. Style Reference (Internal Guide)
 *   **Restrained Voice**: Specific detail > Generalization.

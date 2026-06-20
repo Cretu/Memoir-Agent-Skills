@@ -16,10 +16,27 @@
       "name": "memoir-writing",
       "path": "./memoir-writing",
       "description": "Generate restrained memoir-style prose from memories"
+    },
+    {
+      "name": "memoir-revision",
+      "path": "./memoir-revision",
+      "description": "Edit drafted chapters and run accuracy, fairness, and safety checks"
+    }
+  ],
+  "shared_references": [
+    {
+      "name": "memoir-purpose-and-audience",
+      "path": "./memoir-purpose-and-audience.md",
+      "description": "Phase 0: set reader, scope, and theme (the Project Compass)"
+    },
+    {
+      "name": "memoir-ethics-and-care",
+      "path": "./memoir-ethics-and-care.md",
+      "description": "Cross-cutting: emotional safety, writing about real people, the truth contract"
     }
   ],
   "workflow": {
-    "description": "Sequential pipeline: Memory Recall → Architecture → Writing",
+    "description": "Pipeline: Purpose & Audience (Phase 0) → Memory Recall → Architecture → Writing → Revision",
     "documentation": "./orchestration.md"
   }
 }

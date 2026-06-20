@@ -1,0 +1,30 @@
+name: memoir-revision
+description: >
+  A skill to revise and edit completed memoir chapters through ordered passes —
+  developmental, line, continuity — and a final responsibility check for accuracy,
+  fairness to real people, and emotional safety. Strengthens drafts while preserving
+  the writer's voice.
+license: MIT
+author: Memoir Agent Skills
+version: 1.0.0
+allowed-tools:
+  - text-generation
+  - read_file
+  - write_file
+  - list_directory
+examples:
+  - description: Developmental edit of a chapter
+    input: "This chapter feels flat — can you help me fix it?"
+    output: "Pass-based critique: what to cut, what to deepen, where theme is missing"
+  - description: Line editing for restraint
+    input: "Tighten the prose in my leaving-home chapter"
+    output: "before → after sentence edits that cut telling and clichés"
+  - description: Final responsibility pass
+    input: "Is this chapter ready, and is it fair to the people in it?"
+    output: "Accuracy, fairness, safety, and author's-note disclosure checklist"
+tags:
+  - revision
+  - editing
+  - memoir
+  - continuity
+  - proofreading
