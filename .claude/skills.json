@@ -3,6 +3,16 @@
   "description": "Claude Agent Skills for memoir writing workflow",
   "skills": [
     {
+      "name": "memoir-orchestrator",
+      "path": "./memoir-orchestrator",
+      "description": "Project lead: tracks state, picks the next action, routes skills, runs proactive nudges"
+    },
+    {
+      "name": "memoir-coach",
+      "path": "./memoir-coach",
+      "description": "Pacing and motivation: shrinks tasks, works through resistance, sustains cadence"
+    },
+    {
       "name": "memoir-memory-recall",
       "path": "./memoir-memory-recall",
       "description": "Elicit personal memories through structured recall questions"
@@ -36,7 +46,8 @@
     }
   ],
   "workflow": {
-    "description": "Pipeline: Purpose & Audience (Phase 0) → Memory Recall → Architecture → Writing → Revision",
-    "documentation": "./orchestration.md"
+    "description": "Pipeline: Purpose & Audience (Phase 0) → Memory Recall → Architecture → Writing → Revision. The Orchestrator drives the pipeline and the Coach sustains momentum; both read/write project_state.md.",
+    "documentation": "./orchestration.md",
+    "deployment": "./openclaw-setup.md"
   }
 }

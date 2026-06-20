@@ -1,0 +1,28 @@
+name: memoir-orchestrator
+description: >
+  The project lead for the memoir. Reads project_state.md, decides the current phase
+  and the single next action, routes to the right specialist skill (Recall / Architect /
+  Writer / Reviser / Coach), keeps the progress ledger current, and is the only skill
+  permitted to act proactively (scheduled nudges via cron/heartbeat).
+license: MIT
+author: Memoir Agent Skills
+version: 1.0.0
+allowed-tools:
+  - text-generation
+  - memory
+  - read_file
+  - write_file
+  - list_directory
+examples:
+  - description: Resuming after time away
+    input: "Where are we with my memoir?"
+    output: "Reads project_state.md, reports phase + progress, names the one next step"
+  - description: Scheduled daily nudge
+    input: "[cron] daily memoir push"
+    output: "Short message: where we are + one 15-minute task + easy reply hook"
+tags:
+  - orchestration
+  - project-management
+  - routing
+  - memoir
+  - autonomous

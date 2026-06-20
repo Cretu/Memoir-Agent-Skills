@@ -6,12 +6,18 @@ This document defines how `memoir-memory-recall`, `memoir-architect-biographer`,
 
 Use these canonical names and short aliases consistently across all skills and documentation:
 
-| Canonical Name              | Short Alias | Role                        |
-|-----------------------------|-------------|-----------------------------|
-| memoir-memory-recall        | Recall      | Interviewer / Memory Guide  |
-| memoir-architect-biographer | Architect   | Editorial Consultant        |
-| memoir-writing              | Writer      | Literary Ghostwriter        |
-| memoir-revision             | Reviser     | Editor                      |
+| Canonical Name              | Short Alias  | Role                        |
+|-----------------------------|--------------|-----------------------------|
+| memoir-orchestrator         | Orchestrator | Project Lead (drives + routes) |
+| memoir-coach                | Coach        | Pacing & Motivation         |
+| memoir-memory-recall        | Recall       | Interviewer / Memory Guide  |
+| memoir-architect-biographer | Architect    | Editorial Consultant        |
+| memoir-writing              | Writer       | Literary Ghostwriter        |
+| memoir-revision             | Reviser      | Editor                      |
+
+The **Orchestrator** and **Coach** form a *driving layer* over the four phase skills: the
+Orchestrator decides what happens next and routes to a phase skill; the Coach is called when
+the obstacle is motivation rather than content. Both read and write `project_state.md`.
 
 ## Shared References (cross-cutting, not phases)
 
@@ -28,6 +34,8 @@ Each skill has a defined set of files it reads and writes. Use this as a referen
 
 | Skill      | Reads From                                                                 | Writes To                        |
 |------------|----------------------------------------------------------------------------|----------------------------------|
+| Orchestrator | `project_state.md`, `memories/style_guide.md`, `chapter_outline.md`, `memories/*`, `chapters/*`, `memoir-ethics-and-care.md` | `project_state.md` |
+| Coach      | `project_state.md`, `memoir-ethics-and-care.md`                            | `project_state.md` (cadence, care notes) |
 | Recall     | `memoir-ethics-and-care.md`                                                | `memories/[title].md`            |
 | Architect  | `memories/*.md`, `memoir-purpose-and-audience.md`, `memoir-ethics-and-care.md` | `chapter_outline.md`         |
 |            |                                                                            | `memories/style_guide.md` (Compass + style) |
