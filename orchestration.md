@@ -11,6 +11,16 @@ Use these canonical names and short aliases consistently across all skills and d
 | memoir-memory-recall        | Recall      | Interviewer / Memory Guide  |
 | memoir-architect-biographer | Architect   | Editorial Consultant        |
 | memoir-writing              | Writer      | Literary Ghostwriter        |
+| memoir-revision             | Reviser     | Editor                      |
+
+## Shared References (cross-cutting, not phases)
+
+Two documents apply across every phase rather than belonging to one skill:
+
+| Document                       | What it governs                                              | Who reads it |
+|--------------------------------|-------------------------------------------------------------|--------------|
+| `memoir-purpose-and-audience.md` | **Phase 0**: reader, scope, theme → the Project Compass    | Architect (owns it); any skill if unset |
+| `memoir-ethics-and-care.md`      | Emotional safety, writing about real people, truth contract | All skills, each phase |
 
 ## File Contracts
 
@@ -18,21 +28,45 @@ Each skill has a defined set of files it reads and writes. Use this as a referen
 
 | Skill      | Reads From                                                                 | Writes To                        |
 |------------|----------------------------------------------------------------------------|----------------------------------|
-| Recall     | (none)                                                                     | `memories/[title].md`            |
-| Architect  | `memories/*.md`                                                            | `chapter_outline.md`             |
-|            |                                                                            | `memories/style_guide.md` (updates) |
-| Writer     | `chapter_outline.md`, `memories/style_guide.md`, `memories/[relevant].md` | `chapters/chapter_[N]_[slug].md` |
+| Recall     | `memoir-ethics-and-care.md`                                                | `memories/[title].md`            |
+| Architect  | `memories/*.md`, `memoir-purpose-and-audience.md`, `memoir-ethics-and-care.md` | `chapter_outline.md`         |
+|            |                                                                            | `memories/style_guide.md` (Compass + style) |
+| Writer     | `chapter_outline.md`, `memories/style_guide.md`, `memories/[relevant].md`, `memoir-ethics-and-care.md` | `chapters/chapter_[N]_[slug].md` |
+| Reviser    | `chapters/*.md`, `chapter_outline.md`, `memories/style_guide.md`, `memoir-ethics-and-care.md` | `chapters/chapter_[N]_[slug].md` (revised), `chapters/authors_note_flags.md` |
 
 ## Overview
 
-The three skills form a sequential pipeline:
+The skills form a sequential pipeline, opened by a one-time **Phase 0** (Purpose &
+Audience) and closed by a **Phase 4** (Revision):
 
 ```
-┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────┐
-│  Memory Recall  │ →  │  Architect/Biographer│ →  │  Memoir Writing │
-│  (extract)      │    │  (structure)        │    │  (craft)        │
-└─────────────────┘    └─────────────────────┘    └─────────────────┘
+        Phase 0: Purpose & Audience  (set the Project Compass)
+                        │
+                        ▼
+┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Memory Recall  │ →  │  Architect/Biographer│ →  │  Memoir Writing │ →  │ Memoir Revision │
+│  (extract)      │    │  (structure)        │    │  (craft)        │    │  (edit + check) │
+└─────────────────┘    └─────────────────────┘    └─────────────────┘    └─────────────────┘
+        ▲                                                                          │
+        └──────────────── iterate: new material, restructure, rewrite ────────────┘
+
+   Cross-cutting throughout: memoir-ethics-and-care.md (safety, real people, truth)
 ```
+
+## Phase 0: Purpose & Audience
+
+**Doc**: `memoir-purpose-and-audience.md` (run by the Architect, or any skill if the writer arrives cold)
+
+**Goal**: Decide *who this is for* and *what it's about* before recalling in earnest.
+
+**What it does**:
+- Establishes the reader (family / public / self) — which sets the legal and tonal bar.
+- Sets scope (whole-life / single thread / vignettes) — recommends focused over comprehensive.
+- Names a working theme (the "so what").
+
+**Output**: A **Project Compass** block at the top of `memories/style_guide.md`.
+
+**When to use**: Once, at the start. Revisit when the theme clarifies after recall.
 
 ## Phase 1: Memory Recall
 
@@ -91,14 +125,32 @@ The three skills form a sequential pipeline:
 - Structure has been approved
 - User wants to see memories as written passages
 
+## Phase 4: Revision
+
+**Skill**: `memoir-revision`
+
+**Goal**: Make drafted chapters better and safer — without overwriting the writer's voice.
+
+**What it does**:
+- Runs ordered passes: developmental → line → continuity → responsibility.
+- Checks the draft against its Project Compass and the truth/fairness/safety standards in
+  `memoir-ethics-and-care.md`.
+- Collects disclosures (changed names, composites, compressed timelines) for an author's note.
+
+**Output**: Revised `chapters/*.md` and `chapters/authors_note_flags.md`; eventually front matter.
+
+**When to use**: After a chapter is drafted, and as a final pass before the memoir is "done."
+
 ## Coordination Patterns
 
 ### Linear Pipeline (Recommended)
 For users starting from scratch:
 
+0. Set the **Project Compass** (`memoir-purpose-and-audience.md`) — reader, scope, theme
 1. Use `memoir-memory-recall` to explore key periods
 2. Use `memoir-architect-biographer` to organize findings
 3. Use `memoir-writing` to draft chapters
+4. Use `memoir-revision` to edit and run the responsibility check
 
 ### Iterative Mode
 For refinement within a chapter:
@@ -121,6 +173,11 @@ User Input
     │
     ▼
 ┌───────────────────┐
+│ Phase 0: Compass  │  →  memories/style_guide.md (Project Compass)
+└───────────────────┘
+    │
+    ▼
+┌───────────────────┐
 │ Memory Recall     │  →  memories/[title].md (Markdown)
 └───────────────────┘
     │
@@ -132,6 +189,11 @@ User Input
     ▼
 ┌───────────────────┐
 │ Writing           │  →  chapters/[title].md (Markdown)
+└───────────────────┘
+    │
+    ▼
+┌───────────────────┐
+│ Revision          │  →  chapters/[title].md (revised) + authors_note_flags.md
 └───────────────────┘
 ```
 
@@ -184,3 +246,6 @@ Best for users committed to a full book.
 3. **Stay in phase**: Writing skill should not do recalling
 4. **Iterate freely**: Return to earlier phases as needed
 5. **Trust the process**: Each phase builds on the previous
+6. **Compass before content**: Don't recall in earnest until reader, scope, and theme are set
+7. **Safety over completeness**: A memory the writer isn't ready for can wait; never push deeper into trauma (see `memoir-ethics-and-care.md`, Part 1)
+8. **Drafts aren't done**: A first draft is clay on the wheel — Revision is where the book is made
