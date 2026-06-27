@@ -46,7 +46,7 @@ Walk *down* until the writer can say yes:
 - **Low frequency, protected**: "twice a week" the writer keeps > "daily" they abandon.
 - **Visible**: a streak or a filling chapter board, reflected back each session.
 Record the chosen cadence + quiet windows in `project_state.md` so scheduled nudges respect
-it (see `openclaw-setup.md`).
+it (see `deployment/`).
 
 ## Milestones worth naming
 First Compass set · first memory captured · 5 / 10 / 25 memories · first outline · first
