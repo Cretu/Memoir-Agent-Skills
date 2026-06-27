@@ -3,7 +3,7 @@ description: >
   The project lead for the memoir. Reads project_state.md, decides the current phase
   and the single next action, routes to the right specialist skill (Recall / Architect /
   Writer / Reviser / Coach), keeps the progress ledger current, and is the only skill
-  permitted to act proactively (scheduled nudges via cron/heartbeat).
+  permitted to act proactively (scheduled nudges on the host scheduler).
 license: MIT
 author: Memoir Agent Skills
 version: 1.0.0

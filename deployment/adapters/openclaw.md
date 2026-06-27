@@ -1,4 +1,9 @@
-# Running this memoir agent on OpenClaw
+# Adapter: OpenClaw
+
+> Part of the runtime-agnostic [deployment layer](../README.md). This adapter shows how
+> OpenClaw provides the four host capabilities ([capability contract](../capability-contract.md)):
+> **C1** files · **C2** skill discovery · **C3** scheduled invocation · **C4** outbound
+> notification. OpenClaw is the best out-of-the-box fit because it provides all four natively.
 
 This guide turns the Memoir Agent Skills into a **self-driving memoir coach** on
 [OpenClaw](https://openclaw.ai/) — a local, open-source personal AI assistant that runs

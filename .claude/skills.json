@@ -48,6 +48,6 @@
   "workflow": {
     "description": "Pipeline: Purpose & Audience (Phase 0) → Memory Recall → Architecture → Writing → Revision. The Orchestrator drives the pipeline and the Coach sustains momentum; both read/write project_state.md.",
     "documentation": "./orchestration.md",
-    "deployment": "./openclaw-setup.md"
+    "deployment": "./deployment/README.md"
   }
 }

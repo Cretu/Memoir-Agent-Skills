@@ -49,16 +49,17 @@ Pick the current phase with this precedence, and name a single concrete next act
 | Enough memories, no `chapter_outline.md` | **Architect** | Hand to `memoir-architect-biographer` to structure |
 | Outline exists, chapters undrafted | **Writing** | Hand to `memoir-writing` for the next undrafted chapter |
 | Chapters drafted, not all revised | **Revision** | Hand to `memoir-revision` for the next unrevised chapter |
-| All chapters revised | **Done** | Offer front matter + export (see `openclaw-setup.md` P5) |
+| All chapters revised | **Done** | Offer front matter + export (see the deployment guide, `deployment/`) |
 
 Always reduce to **one** next step. "Write the book" is not an action; "spend 15 minutes
 recalling the smell of your grandmother's kitchen" is. When motivation/pacing is the real
 blocker (not knowing *what* to do but not *doing* it), route to **`memoir-coach`** instead
 of a content skill.
 
-## 3. Autonomous / scheduled mode (cron & heartbeat)
-When you are invoked by a schedule rather than by the writer (see `openclaw-setup.md`),
-behave differently from an interactive session:
+## 3. Autonomous / scheduled mode (proactive runs)
+When you are invoked by a schedule rather than by the writer (via the host's scheduler — the
+mechanism is runtime-specific, see `deployment/`), behave differently from an interactive
+session:
 *   **Be short and single-tasked.** Output one message the writer can act on from their
     phone: a brief "where we are" + **one** concrete 15-minute task + an easy reply hook
     ("just reply with whatever comes to mind").
@@ -89,4 +90,4 @@ Update `project_state.md` with `write_file`:
 ## 6. Transition
 End every interactive session by stating the single next action and offering to either do it
 now or schedule it: "Next up: [one thing]. Want to do it now, or should I remind you
-[cadence]?" (Scheduling is configured per `openclaw-setup.md`.)
+[cadence]?" (Scheduling is configured per the deployment guide in `deployment/`.)
