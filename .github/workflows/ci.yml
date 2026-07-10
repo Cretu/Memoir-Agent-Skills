@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate skills & docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate repository (skills, manifest, links, layout)
+        run: python3 scripts/validate.py
+
+      - name: Shell syntax check
+        run: sh -n deployment/detect-runtime.sh
+
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+          shellcheck deployment/detect-runtime.sh
+
+      - name: Smoke-run runtime detector (read-only)
+        run: sh deployment/detect-runtime.sh

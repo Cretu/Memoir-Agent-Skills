@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to this project are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
+versions follow [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- **Runtime-agnostic deployment layer** (`deployment/`): the four-capability
+  contract (C1 files · C2 skills · C3 schedule · C4 notify), per-runtime
+  adapters (OpenClaw, Claude Code, Claude Agent SDK, generic cron+CLI, other
+  frameworks), and a read-only `detect-runtime.sh` that probes the host and
+  recommends an adapter.
+- **Project engineering**: CI (skill/link/layout validation, ShellCheck,
+  detector smoke run), `scripts/validate.py`, `Makefile`, LICENSE, CHANGELOG,
+  CONTRIBUTING, SECURITY, ROADMAP, issue/PR templates, `.editorconfig`.
+
+### Changed
+- Orchestrator/Coach wording generalized from hardcoded "cron/heartbeat" to
+  "the host scheduler (see `deployment/`)".
+
+## [0.4.0] — 2026-06-20
+
+### Added
+- **Driving layer**: `memoir-orchestrator` (project lead: phase detection, the
+  single next action, routing, proactive scheduled nudges with a care gate and
+  truth-contract guardrails) and `memoir-coach` (pacing, resistance,
+  sustainable cadence, milestones).
+- `project_state.md` progress ledger (snapshot, chapter board, care notes).
+- OpenClaw deployment guide (later generalized into `deployment/`).
+
+### Changed
+- All skills aligned with OpenClaw conventions: descriptions ≤160 bytes,
+  support files under `references/`, `examples/`, `templates/`.
+
+## [0.3.0] — 2026-06-20
+
+### Added
+- `memoir-revision` skill: ordered passes (developmental → line → continuity →
+  responsibility).
+- `memoir-ethics-and-care.md`: emotional safety, writing about real people,
+  the truth contract.
+- `memoir-purpose-and-audience.md` (Phase 0): reader, scope, theme — the
+  Project Compass.
+
+## [0.2.0] — 2026-06-11
+
+### Changed
+- Cross-skill coherence: unified naming, file contracts, phase transitions.
+
+## [0.1.0] — 2026-02-01
+
+### Added
+- Initial skills: `memoir-memory-recall`, `memoir-architect-biographer`,
+  `memoir-writing`, plus `orchestration.md` and the memories/chapters data
+  model.

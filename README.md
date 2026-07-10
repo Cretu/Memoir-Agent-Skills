@@ -1,5 +1,9 @@
 # Memoir Agent Skills
 
+[![CI](https://github.com/Cretu/Memoir-Agent-Skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Cretu/Memoir-Agent-Skills/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Skills](https://img.shields.io/badge/skills-6-8A2BE2)](orchestration.md)
+
 A collection of Claude Agent Skills for creating personal memoirs through a structured workflow: a one-time **Purpose & Audience** setup, three core phases (Recall → Architect → Writing), a closing **Revision** phase, two cross-cutting references that keep the work safe, fair, and true, and a **driving layer** (Orchestrator + Coach) that turns the toolbox into a self-driving project that keeps you moving.
 
 > **Running it as an autonomous agent:** the skills are runtime-agnostic. See [deployment/](deployment/) for the [capability contract](deployment/capability-contract.md) and per-runtime adapters (Claude Code, Claude Agent SDK, OpenClaw, generic cron, and other frameworks), plus a [`detect-runtime.sh`](deployment/detect-runtime.sh) script that probes your environment and recommends an adapter.
@@ -131,3 +135,27 @@ memoir-agent-skills/
 ## Usage
 
 Each skill can be used independently or as part of the full workflow. See individual skill directories for detailed documentation.
+
+**Quick start**: run `sh deployment/detect-runtime.sh` to find the right adapter for your
+environment, wire up the four capabilities it reports, then ask the agent
+*"Where are we with my memoir?"* — the Orchestrator takes it from there.
+
+## Development
+
+```sh
+make validate   # skills, manifest, links, layout (same checks as CI)
+make lint       # shell syntax (+ shellcheck if installed)
+make detect     # run the read-only runtime detector
+```
+
+CI runs these on every push and pull request. Conventions (160-byte skill
+descriptions, support-file folders, file contracts) are documented in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Project meta
+
+- [ROADMAP.md](ROADMAP.md) — where this is going (contract-as-code, stateful driver, caring adaptive drive, voice capture, evals, packaging)
+- [CHANGELOG.md](CHANGELOG.md) — versioned history
+- [CONTRIBUTING.md](CONTRIBUTING.md) — layout, conventions, how to add a skill or adapter
+- [SECURITY.md](SECURITY.md) — the privacy model and how to report issues
+- [LICENSE](LICENSE) — MIT
