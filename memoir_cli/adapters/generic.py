@@ -73,23 +73,30 @@ class GenericCronAdapter(Adapter):
     ) -> tuple[list[Path], str]:
         cmd = self._load_agent_cmd(workspace)
         if cmd:
-            self._config(workspace).write_text(
-                json.dumps({"adapter": self.id, "agent_cmd": cmd}, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            cfg_path = self._config(workspace)
+            cfg = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
+            cfg.update({"adapter": self.id, "agent_cmd": cmd})
+            cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+        # validate the template early so a bad --agent-cmd fails at schedule
+        # time, not silently at 8pm
+        self.agent_command(workspace, "test")
         d = memoir_dir(workspace)
+        memoir_bin = Path(__file__).resolve().parents[2] / "bin" / "memoir"
         cron_file = d / "cron.txt"
         lines = []
         for job in jobs:
             lines.append(f"# {job.description}")
             lines.append(
-                f"{job.cron} {self.agent_command(workspace, job.prompt)} | {notify_cmd}"
+                f"{job.cron} {shlex.quote(str(memoir_bin))} run "
+                f"--workspace {shlex.quote(str(workspace))} --job {job.id} "
+                f">>{shlex.quote(str(d / 'cron.log'))} 2>&1"
             )
         cron_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
         instructions = (
             f"Add the lines in {cron_file} to your scheduler "
             "(crontab -e, or translate to launchd/systemd — see "
-            "deployment/adapters/generic-cron.md)."
+            "deployment/adapters/generic-cron.md). Runs go through the stateful "
+            "driver (`memoir run`): retries, quiet hours, delivery, run log."
         )
         return [cron_file], instructions
 

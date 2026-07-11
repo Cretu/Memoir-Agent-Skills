@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from memoir_cli import detect as detect_mod
+from memoir_cli import driver as driver_mod
 from memoir_cli import notify as notify_mod
 from memoir_cli import workspace as ws_mod
 from memoir_cli.adapters.claude_code import (
@@ -87,15 +88,28 @@ class TestClaudeCodeAdapter(unittest.TestCase):
             )
             settings = json.loads((ws / ".memoir" / "autonomous-settings.json").read_text())
             self.assertIn("Write(./chapters/**)", settings["permissions"]["deny"])
+            # cron lines go through the stateful driver, not a bare agent call
             cron = (ws / ".memoir" / "cron.txt").read_text()
             self.assertIn("30 21 * * *", cron)          # daily at 21:30
             self.assertIn("0 18 * * 3", cron)           # weekly on wednesday
-            self.assertIn("--settings", cron)
-            self.assertIn("Do NOT draft", cron)
+            self.assertIn("run --workspace", cron)
+            self.assertIn("--job daily-nudge", cron)
+            # the underlying agent command keeps the guardrails + truth contract
+            agent_cmd = adapter.agent_command(ws, standard_jobs()[0].prompt)
+            self.assertIn("--settings", agent_cmd)
+            self.assertIn("Do NOT draft", agent_cmd)
             timer = (ws / ".memoir" / "systemd" / "memoir-weekly-review.timer").read_text()
             self.assertIn("OnCalendar=Wed *-*-* 18:00:00", timer)
             self.assertIn("systemctl --user", instructions)
             self.assertTrue(all(a.exists() for a in artifacts))
+
+    def test_reply_command_continues_session_with_guardrails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            adapter = ClaudeCodeAdapter()
+            cmd = adapter.reply_command(ws, "the writer said something")
+            self.assertIn("--continue", cmd)
+            self.assertIn("--settings", cmd)
 
     def test_doctor_passes_after_full_setup(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -155,6 +169,102 @@ class TestOtherAdapters(unittest.TestCase):
             adapter.agent_cmd = "my-agent --once {prompt}"
             cmd = adapter.agent_command(ws, "hello world")
             self.assertIn("my-agent --once 'hello world'", cmd)
+
+
+class TestDriver(unittest.TestCase):
+    """Stateful driver (memoir run): retries, quiet hours, reply, logging."""
+
+    def _ws_with_stub(self, tmp: str, fail_times: int) -> Path:
+        """Workspace on the generic adapter whose 'agent' is a stub that fails
+        `fail_times` times, then prints a message."""
+        ws = Path(tmp) / "ws"
+        ws_mod.init(REPO, ws)
+        notify_mod.write_notifier(ws, "file", {})
+        stub = Path(tmp) / "stub.sh"
+        counter = Path(tmp) / "count"
+        stub.write_text(
+            "#!/bin/sh\n"
+            f'n=$(cat "{counter}" 2>/dev/null || echo 0)\n'
+            f'echo $((n+1)) > "{counter}"\n'
+            f"[ $((n)) -lt {fail_times} ] && exit 1\n"
+            'echo "nudge for: $1"\n',
+            encoding="utf-8",
+        )
+        stub.chmod(0o755)
+        driver_mod.save_config(
+            ws, {"adapter": "generic", "agent_cmd": f"{stub} {{prompt}}"}
+        )
+        return ws
+
+    def test_retries_then_succeeds_and_delivers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws_with_stub(tmp, fail_times=2)
+            result = driver_mod.run_job(ws, "daily-nudge", retry_delay=0)
+            self.assertTrue(result.ok)
+            self.assertEqual(result.attempts, 3)
+            self.assertTrue(result.delivered)
+            # delivered through the file notifier
+            self.assertIn("nudge for:", (ws / ".memoir" / "nudges.log").read_text())
+            # structured log + durable state
+            runs = [
+                json.loads(line)
+                for line in (ws / ".memoir" / "runs.jsonl").read_text().splitlines()
+            ]
+            self.assertEqual(len(runs), 1)
+            self.assertTrue(runs[0]["ok"])
+            self.assertEqual(runs[0]["attempts"], 3)
+            state = driver_mod.load_state(ws)
+            self.assertEqual(state["jobs"]["daily-nudge"]["consecutive_failures"], 0)
+
+    def test_exhausted_retries_recorded_as_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws_with_stub(tmp, fail_times=99)
+            result = driver_mod.run_job(ws, "daily-nudge", attempts=2, retry_delay=0)
+            self.assertFalse(result.ok)
+            state = driver_mod.load_state(ws)
+            self.assertEqual(state["jobs"]["daily-nudge"]["consecutive_failures"], 1)
+
+    def test_quiet_window_skips_but_force_overrides(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws_with_stub(tmp, fail_times=0)
+            cfg = driver_mod.load_config(ws)
+            cfg.update({"quiet_from": "22:00", "quiet_to": "08:00"})
+            driver_mod.save_config(ws, cfg)
+            inside = dt.time(23, 30)
+            result = driver_mod.run_job(ws, "daily-nudge", now=inside, retry_delay=0)
+            self.assertTrue(result.ok)
+            self.assertEqual(result.attempts, 0)      # nothing executed
+            self.assertIn("quiet", result.error)
+            forced = driver_mod.run_job(
+                ws, "daily-nudge", now=inside, force=True, retry_delay=0
+            )
+            self.assertEqual(forced.attempts, 1)
+
+    def test_quiet_window_midnight_wrap(self):
+        import datetime as dt
+        self.assertTrue(driver_mod.in_quiet_window(dt.time(23, 0), "22:00", "08:00"))
+        self.assertTrue(driver_mod.in_quiet_window(dt.time(7, 59), "22:00", "08:00"))
+        self.assertFalse(driver_mod.in_quiet_window(dt.time(12, 0), "22:00", "08:00"))
+        self.assertFalse(driver_mod.in_quiet_window(dt.time(12, 0), "", ""))
+
+    def test_reply_flows_through_and_updates_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws_with_stub(tmp, fail_times=0)
+            result = driver_mod.run_reply(ws, "I remember the red bicycle", retry_delay=0)
+            self.assertTrue(result.ok)
+            self.assertIn("red bicycle", result.output)
+            self.assertIsNotNone(driver_mod.load_state(ws)["last_reply_at"])
+
+    def test_status_renders_dashboard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws_with_stub(tmp, fail_times=0)
+            (ws / "memories" / "the-red-bicycle.md").write_text("m", encoding="utf-8")
+            driver_mod.run_job(ws, "daily-nudge", retry_delay=0)
+            out = driver_mod.status(ws)
+            self.assertIn("memories:  1", out)
+            self.assertIn("job daily-nudge", out)
+            self.assertIn("[ok]", out)
 
 
 class TestDetect(unittest.TestCase):

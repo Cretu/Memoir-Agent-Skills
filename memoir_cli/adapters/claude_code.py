@@ -51,6 +51,9 @@ AUTONOMOUS_SETTINGS = {
 CRON_BEGIN = "# >>> memoir-agent (managed block, do not edit) >>>"
 CRON_END = "# <<< memoir-agent <<<"
 
+# Launcher for the stateful driver (retries, quiet hours, delivery, run log).
+MEMOIR_BIN = Path(__file__).resolve().parents[2] / "bin" / "memoir"
+
 _ALLOWED_TOOLS_RE = re.compile(
     r"^allowed-tools:\n(?:^[ \t]+-[^\n]*\n)+", flags=re.M
 )
@@ -111,6 +114,18 @@ class ClaudeCodeAdapter(Adapter):
             f"--allowedTools {shlex.quote(AUTONOMOUS_TOOLS)}"
         )
 
+    def reply_command(self, workspace: Path, prompt: str) -> str:
+        """Reply turns continue the most recent session in the workspace, so the
+        agent remembers what it asked. Same guardrails as autonomous runs: a
+        reply is still unattended — drafting stays in interactive sessions."""
+        settings = memoir_dir(workspace) / "autonomous-settings.json"
+        return (
+            f"cd {shlex.quote(str(workspace))} && "
+            f"claude -p --continue {shlex.quote(prompt)} "
+            f"--settings {shlex.quote(str(settings))} "
+            f"--allowedTools {shlex.quote(AUTONOMOUS_TOOLS)}"
+        )
+
     # -- C3 -------------------------------------------------------------
     def schedule(
         self, workspace: Path, jobs: list[Job], notify_cmd: str
@@ -124,13 +139,26 @@ class ClaudeCodeAdapter(Adapter):
         )
         artifacts.append(settings)
 
-        # crontab block
+        # ensure the driver (`memoir run`) knows which adapter owns this
+        # workspace, even when schedule() is called programmatically
+        cfg_path = d / "config.json"
+        cfg = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
+        cfg["adapter"] = self.id
+        cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+
+        # crontab block — every unattended turn goes through the stateful driver
+        # (`memoir run`): retries, quiet-hours guard, delivery, structured logs.
+        def driver_cmd(job: Job) -> str:
+            return (
+                f"{shlex.quote(str(MEMOIR_BIN))} run "
+                f"--workspace {shlex.quote(str(workspace))} --job {job.id}"
+            )
+
         lines = [CRON_BEGIN]
         for job in jobs:
             lines.append(f"# {job.description}")
             lines.append(
-                f"{job.cron} {self.agent_command(workspace, job.prompt)}"
-                f" 2>>{shlex.quote(str(d / 'cron.log'))} | {notify_cmd}"
+                f"{job.cron} {driver_cmd(job)} >>{shlex.quote(str(d / 'cron.log'))} 2>&1"
             )
         lines.append(CRON_END)
         cron_file = d / "cron.txt"
@@ -146,7 +174,7 @@ class ClaudeCodeAdapter(Adapter):
                 "[Unit]\n"
                 f"Description=memoir: {job.description}\n\n"
                 "[Service]\nType=oneshot\n"
-                f"ExecStart=/bin/sh -c {shlex.quote(self.agent_command(workspace, job.prompt) + ' | ' + notify_cmd)}\n",
+                f"ExecStart={MEMOIR_BIN} run --workspace {workspace} --job {job.id}\n",
                 encoding="utf-8",
             )
             timer = sysd / f"memoir-{job.id}.timer"
@@ -234,6 +262,12 @@ class ClaudeCodeAdapter(Adapter):
         checks.append(
             CheckResult(
                 "scheduler artifacts generated", (d / "cron.txt").is_file(),
+                fix="run: memoir schedule",
+            )
+        )
+        checks.append(
+            CheckResult(
+                "driver config present (memoir run)", (d / "config.json").is_file(),
                 fix="run: memoir schedule",
             )
         )

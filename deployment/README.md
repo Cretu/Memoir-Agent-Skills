@@ -30,6 +30,14 @@ On Claude Code, autonomous runs get a generated settings file that **denies
 Write/Edit under `chapters/`** — the truth contract enforced at the tool-permission
 layer, not just in prompt text.
 
+Scheduled turns run through the **stateful driver** (`memoir run`): retries with
+backoff, a quiet-hours guard (`--quiet-from 22:00 --quiet-to 08:00`), delivery via
+the configured notifier, a JSONL run log, and durable loop state. Check health any
+time with `./bin/memoir status --workspace ~/memoir`. Close the loop by wiring your
+channel's inbound webhook to `./bin/memoir run --workspace ~/memoir --reply "<the
+writer's message>"` — on Claude Code the reply continues the agent's most recent
+session, so it remembers what it asked.
+
 ## Quick start — manual
 1. **Detect your environment**: `sh deployment/detect-runtime.sh` (or `./bin/memoir detect`)
    It reports which runtimes and schedulers are present and points you at an adapter.
