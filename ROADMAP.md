@@ -20,7 +20,7 @@ Guiding idea for the next phases:
 | 0.d | Project engineering (CI, validator, governance docs) | ✅ shipped |
 | 1 | Contract-as-code + real installer | ✅ shipped (`memoir_cli/` + `bin/memoir`; reference runtime: Claude Code) |
 | 2 | Stateful driver + structured state | ✅ shipped (`memoir run` / `memoir status`) |
-| 3 | Caring adaptive drive | planned |
+| 3 | Caring adaptive drive | ✅ shipped (`adaptive.py` + `care.json` + `memoir care`) |
 | 4 | Voice-first capture | planned |
 | 5 | Quality & trust loop (evals + CI extensions) | planned |
 | 6 | Packaging & distribution | planned |
@@ -67,16 +67,25 @@ that lets the book move between runtimes. The driver owns only loop mechanics in
 Phase 3, where the adaptive scheduler will need to *read* care notes and cadence
 programmatically.
 
-## Phase 3 — Caring adaptive drive
+## Phase 3 — Caring adaptive drive ✅
 
-The "主导推动" (drive-me) behaviour grows judgement instead of a fixed cron beat.
+Shipped as `memoir_cli/adaptive.py` + `memoir_cli/care.py` (+ `memoir care` CLI):
 
-- Adaptive scheduling from response signals: did the writer reply? how short? how many
-  consecutive misses? plus the Coach's resistance model.
-- Quiet windows and care notes enforced **in code** (the scheduler itself skips), not
-  only in prompt text.
-- Automatic cadence up/down-shifting with a hard floor: never escalate pressure on a
-  flagged topic; back off rather than badger.
+- **Signal-driven scheduling**: before each nudge the engine reads the writer's actual
+  response signals — unanswered-nudge streak from the run log, last reply time — and
+  decides send / hold / soften. The ladder only ever goes *down*: 3+ unanswered →
+  every 2 days with a softer, smaller ask; 6+ → weekly floor. A reply resets it
+  instantly. The writer's chosen cadence (`memoir care cadence`) is the ceiling;
+  silence only widens the gap below it.
+- **Care settings as machine-readable config** (`.memoir/care.json`): pause-until,
+  quiet dates (anniversaries), base cadence — the subset of the Care notes the
+  scheduler must obey mechanically, enforced in code. Corrupt file fails safe.
+  Autonomous agent runs cannot modify it (no Bash).
+- **One-word writer control**: replying 「暂停」/"pause" pauses nudges for 14 days
+  (bilingual confirmation, no agent involved); 「继续」/"resume" — only meaningful
+  while paused — resumes. Reviews honour pause/quiet dates too.
+- `memoir status` shows the streak, the next-nudge decision and reason, and the care
+  settings. Topic-level care notes stay narrative in `project_state.md` for the agent.
 
 ## Phase 4 — Voice-first capture
 

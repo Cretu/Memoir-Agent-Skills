@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from memoir_cli import adaptive as adaptive_mod
+from memoir_cli import care as care_mod
 from memoir_cli import detect as detect_mod
 from memoir_cli import driver as driver_mod
 from memoir_cli import notify as notify_mod
@@ -265,6 +267,191 @@ class TestDriver(unittest.TestCase):
             self.assertIn("memories:  1", out)
             self.assertIn("job daily-nudge", out)
             self.assertIn("[ok]", out)
+
+
+class TestAdaptive(unittest.TestCase):
+    """Caring adaptive engine: backoff on silence, reset on reply, hard stops."""
+
+    NOW = None  # set per test via _now
+
+    def _now(self):
+        import datetime as dt
+        return dt.datetime.now(dt.timezone.utc)
+
+    def _seed_nudges(self, ws: Path, ago_days: list[float]) -> None:
+        """Seed runs.jsonl with delivered daily nudges N days in the past."""
+        import datetime as dt
+        lines = []
+        for ago in sorted(ago_days, reverse=True):
+            ts = (self._now() - dt.timedelta(days=ago)).isoformat(timespec="seconds")
+            lines.append(json.dumps({
+                "ts": ts, "kind": "job", "id": "daily-nudge",
+                "ok": True, "delivered": True,
+            }))
+        (ws / ".memoir").mkdir(parents=True, exist_ok=True)
+        (ws / ".memoir" / "runs.jsonl").write_text("\n".join(lines) + "\n")
+
+    def _set_last_reply(self, ws: Path, ago_days: float) -> None:
+        import datetime as dt
+        state = driver_mod.load_state(ws)
+        state["last_reply_at"] = (
+            self._now() - dt.timedelta(days=ago_days)
+        ).isoformat(timespec="seconds")
+        driver_mod.save_state(ws, state)
+
+    def test_fresh_workspace_sends_normally(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = adaptive_mod.decide(Path(tmp))
+            self.assertTrue(d.send)
+            self.assertFalse(d.soften)
+
+    def test_reply_resets_the_ladder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            self._seed_nudges(ws, [5, 4, 3, 2])
+            self._set_last_reply(ws, 1.5)  # replied after all of them
+            d = adaptive_mod.decide(ws)
+            self.assertEqual(d.silent_streak, 0)
+            self.assertTrue(d.send)
+            self.assertFalse(d.soften)
+
+    def test_three_unanswered_backs_off_and_softens(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            self._seed_nudges(ws, [3, 2, 1])       # 3 unanswered, last 1d ago
+            d = adaptive_mod.decide(ws)
+            self.assertFalse(d.send)                # 2-day gap not yet elapsed
+            self.assertEqual(d.silent_streak, 3)
+            self._seed_nudges(ws, [4, 3, 2.5])      # last one 2.5d ago
+            d = adaptive_mod.decide(ws)
+            self.assertTrue(d.send)
+            self.assertTrue(d.soften)               # sends, but gently
+
+    def test_six_unanswered_reaches_weekly_floor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            self._seed_nudges(ws, [20, 18, 16, 14, 12, 10, 3])
+            d = adaptive_mod.decide(ws)
+            self.assertFalse(d.send)                # 7d gap, only 3d elapsed
+            self._seed_nudges(ws, [24, 22, 20, 18, 16, 14, 8])
+            d = adaptive_mod.decide(ws)
+            self.assertTrue(d.send)
+            self.assertTrue(d.soften)
+
+    def test_pause_and_quiet_dates_are_hard_stops(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            care_mod.set_pause(ws, dt.date.today() + dt.timedelta(days=5))
+            d = adaptive_mod.decide(ws)
+            self.assertFalse(d.send)
+            self.assertIn("paused", d.reason)
+            care_mod.clear_pause(ws)
+            today = dt.date.today().isoformat()
+            care_mod.add_quiet_dates(ws, today, today, "anniversary")
+            d = adaptive_mod.decide(ws)
+            self.assertFalse(d.send)
+            self.assertIn("anniversary", d.reason)
+
+    def test_expired_pause_no_longer_blocks(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            care_mod.set_pause(ws, dt.date.today() - dt.timedelta(days=1))
+            self.assertTrue(adaptive_mod.decide(ws).send)
+
+    def test_writer_cadence_widens_base_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            care_mod.set_cadence(ws, 2)             # ~every 3.5 days
+            self._seed_nudges(ws, [1])
+            self._set_last_reply(ws, 0.5)           # engaged writer
+            d = adaptive_mod.decide(ws)
+            self.assertFalse(d.send)                # own cadence says wait
+            self.assertFalse(d.soften)
+
+    def test_care_mutations_never_leak_between_workspaces(self):
+        """Regression: care.load() must deep-copy defaults — a quiet window
+        added in one workspace must not appear in another."""
+        import datetime as dt
+        today = dt.date.today().isoformat()
+        with tempfile.TemporaryDirectory() as tmp_a, \
+                tempfile.TemporaryDirectory() as tmp_b:
+            care_mod.add_quiet_dates(Path(tmp_a), today, today, "private")
+            care_mod.set_cadence(Path(tmp_a), 2)
+            other = care_mod.load(Path(tmp_b))
+            self.assertEqual(other["quiet_dates"], [])
+            self.assertEqual(other["cadence"]["nudges_per_week"], 7)
+
+    def test_corrupt_care_file_fails_safe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            care_path = care_mod.care_path(ws)
+            care_path.write_text("{not json", encoding="utf-8")
+            self.assertTrue(adaptive_mod.decide(ws).send)  # defaults, no crash
+
+
+class TestDriverCareIntegration(unittest.TestCase):
+    def _ws(self, tmp: str) -> Path:
+        ws = Path(tmp) / "ws"
+        ws_mod.init(REPO, ws)
+        notify_mod.write_notifier(ws, "file", {})
+        stub = Path(tmp) / "stub.sh"
+        stub.write_text('#!/bin/sh\necho "agent got: $1"\n', encoding="utf-8")
+        stub.chmod(0o755)
+        driver_mod.save_config(
+            ws, {"adapter": "generic", "agent_cmd": f"{stub} {{prompt}}"}
+        )
+        return ws
+
+    def test_paused_workspace_skips_both_jobs(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            care_mod.set_pause(ws, dt.date.today() + dt.timedelta(days=3))
+            for job in ("daily-nudge", "weekly-review"):
+                result = driver_mod.run_job(ws, job, retry_delay=0)
+                self.assertTrue(result.ok)
+                self.assertEqual(result.attempts, 0, job)
+                self.assertIn("paused", result.error)
+
+    def test_softened_nudge_carries_the_modifier(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            lines = []
+            for ago in (5, 4, 3):
+                ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=ago))
+                lines.append(json.dumps({
+                    "ts": ts.isoformat(timespec="seconds"), "kind": "job",
+                    "id": "daily-nudge", "ok": True, "delivered": True,
+                }))
+            (ws / ".memoir" / "runs.jsonl").write_text("\n".join(lines) + "\n")
+            result = driver_mod.run_job(ws, "daily-nudge", retry_delay=0)
+            self.assertTrue(result.ok)
+            self.assertIn("one sentence is enough", result.output)
+
+    def test_pause_keyword_reply_pauses_without_agent(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            result = driver_mod.run_reply(ws, "暂停", retry_delay=0)
+            self.assertTrue(result.ok)
+            self.assertNotIn("agent got:", result.output)   # agent never called
+            self.assertIn("已暂停", result.output)
+            self.assertTrue(care_mod.is_paused(care_mod.load(ws), dt.date.today()))
+            # confirmation went out through the notifier
+            self.assertIn("已暂停", (ws / ".memoir" / "nudges.log").read_text())
+            # and '继续' while paused resumes (only acts when paused)
+            result = driver_mod.run_reply(ws, "继续", retry_delay=0)
+            self.assertFalse(care_mod.is_paused(care_mod.load(ws), dt.date.today()))
+            self.assertIn("欢迎回来", result.output)
+
+    def test_resume_word_flows_to_agent_when_not_paused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            result = driver_mod.run_reply(ws, "继续", retry_delay=0)
+            self.assertIn("agent got:", result.output)      # normal reply path
 
 
 class TestDetect(unittest.TestCase):

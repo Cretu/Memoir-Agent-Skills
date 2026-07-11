@@ -15,8 +15,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, detect as detect_mod, driver as driver_mod
-from . import notify as notify_mod, workspace as ws_mod
+from . import __version__, care as care_mod, detect as detect_mod
+from . import driver as driver_mod, notify as notify_mod, workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
 from .adapters.generic import GenericCronAdapter
@@ -160,6 +160,32 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_care(args) -> int:
+    import datetime as dt
+
+    ws = Path(args.workspace).expanduser()
+    if args.care_action == "show":
+        print(care_mod.render(care_mod.load(ws), dt.date.today()))
+    elif args.care_action == "pause":
+        until = (
+            dt.date.fromisoformat(args.until) if args.until
+            else dt.date.today() + dt.timedelta(days=args.days)
+        )
+        care_mod.set_pause(ws, until)
+        print(f"paused until {until.isoformat()} — no nudges before then")
+    elif args.care_action == "resume":
+        care_mod.clear_pause(ws)
+        print("resumed — nudges follow the usual cadence again")
+    elif args.care_action == "quiet":
+        care_mod.add_quiet_dates(ws, args.date_from, args.date_to or args.date_from,
+                                 args.reason)
+        print(f"quiet dates added: {args.date_from} → {args.date_to or args.date_from}")
+    elif args.care_action == "cadence":
+        care_mod.set_cadence(ws, args.per_week)
+        print(f"cadence set: {args.per_week} nudge(s)/week")
+    return 0
+
+
 def cmd_setup(args) -> int:
     rc = cmd_init(args)
     rc = rc or cmd_install(args)
@@ -242,6 +268,27 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workspace", required=True)
     p.add_argument("--tail", type=int, default=5, help="show last N runs")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("care", help="pause/resume, quiet dates, cadence (the scheduler obeys)")
+    care_sub = p.add_subparsers(dest="care_action", required=True)
+    c = care_sub.add_parser("show", help="current care settings")
+    c.add_argument("--workspace", required=True)
+    c = care_sub.add_parser("pause", help="stop nudges for a while")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--days", type=int, default=care_mod.DEFAULT_PAUSE_DAYS)
+    c.add_argument("--until", default="", help="ISO date (overrides --days)")
+    c = care_sub.add_parser("resume", help="resume nudges")
+    c.add_argument("--workspace", required=True)
+    c = care_sub.add_parser("quiet", help="add quiet dates (e.g. an anniversary)")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--from", dest="date_from", required=True, help="ISO date")
+    c.add_argument("--to", dest="date_to", default="", help="ISO date (default: same day)")
+    c.add_argument("--reason", default="")
+    c = care_sub.add_parser("cadence", help="base nudges per week (1-7)")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--per-week", type=int, required=True)
+    for c in care_sub.choices.values():
+        c.set_defaults(func=cmd_care)
 
     p = sub.add_parser("setup", help="init + install + schedule in one command")
     _add_common(p)

@@ -38,6 +38,12 @@ channel's inbound webhook to `./bin/memoir run --workspace ~/memoir --reply "<th
 writer's message>"` — on Claude Code the reply continues the agent's most recent
 session, so it remembers what it asked.
 
+Nudging is **adaptive, not mechanical**: if the writer stops replying, the scheduler
+backs off (3+ unanswered → every 2 days with a smaller, softer ask; 6+ → weekly) and
+any reply resets the rhythm. The writer stays in control with one word — replying
+「暂停」/"pause" stops nudges for two weeks, 「继续」/"resume" brings them back — or
+via `memoir care` (pause/resume, quiet dates for anniversaries, base cadence).
+
 ## Quick start — manual
 1. **Detect your environment**: `sh deployment/detect-runtime.sh` (or `./bin/memoir detect`)
    It reports which runtimes and schedulers are present and points you at an adapter.

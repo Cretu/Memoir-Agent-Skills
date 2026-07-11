@@ -7,6 +7,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Caring adaptive drive** (ROADMAP Phase 3): a signal-driven scheduler
+  (`adaptive.py`) that backs off and softens instead of badgering — 3+
+  unanswered nudges → every 2 days with a smaller ask, 6+ → weekly floor, any
+  reply resets; machine-readable care settings (`care.json`: pause, quiet
+  dates, cadence) enforced in code and managed via `memoir care`; one-word
+  writer control (「暂停」/"pause", 「继续」/"resume") handled without the
+  agent; `memoir status` shows the streak and next-nudge decision.
+
+### Fixed
+- `care.load()` deep-copies defaults — quiet dates/cadence added in one
+  workspace no longer leak into others through the module-level defaults
+  (caught by the test suite's cross-test interference).
 - **Stateful driver** (`memoir run` / `memoir status`, ROADMAP Phase 2):
   scheduled turns get retries with backoff, timeouts, a JSONL run log, and
   durable loop state with atomic writes; a two-way loop via
