@@ -19,7 +19,7 @@ Guiding idea for the next phases:
 | 0.c | Runtime-agnostic deployment docs (capability contract, adapters, detector) | ✅ shipped |
 | 0.d | Project engineering (CI, validator, governance docs) | ✅ shipped |
 | 1 | Contract-as-code + real installer | ✅ shipped (`memoir_cli/` + `bin/memoir`; reference runtime: Claude Code) |
-| 2 | Stateful driver + structured state | planned |
+| 2 | Stateful driver + structured state | ✅ shipped (`memoir run` / `memoir status`) |
 | 3 | Caring adaptive drive | planned |
 | 4 | Voice-first capture | planned |
 | 5 | Quality & trust loop (evals + CI extensions) | planned |
@@ -42,18 +42,30 @@ Shipped as `memoir_cli/` + `bin/memoir` (stdlib-only Python, unit-tested in CI):
 
 Remaining for later phases: SDK adapter as code, richer OpenClaw automation.
 
-## Phase 2 — Stateful driver + structured state
+## Phase 2 — Stateful driver + structured state ✅
 
-Replace the stateless one-shot cron call with a driver that holds the loop together.
+Shipped as `memoir_cli/driver.py` (`memoir run` / `memoir status`):
 
-- Handles both scheduled ticks **and** the writer's replies (two-way loop), with
-  session continuity across days.
-- **Safety enforced at the tool-permission layer**: autonomous mode gets a toolset
-  that can write `memories/` but cannot touch `chapters/` — the truth contract becomes
-  a mechanism, not just an instruction.
-- Retries/backoff, structured logs, error surfacing.
-- State upgraded to `project_state.json` (machine truth, schema-validated, atomic
-  writes) rendered to `project_state.md` (human view).
+- Every unattended turn goes through the driver instead of a bare agent call:
+  **retries with exponential backoff**, per-turn timeout, structured JSONL run log
+  (`.memoir/runs.jsonl`), durable loop state with **atomic writes**
+  (`.memoir/driver-state.json`: last run/success, consecutive failures, last reply).
+- **Two-way loop**: `memoir run --reply "<text>"` feeds the writer's answer back to
+  the Orchestrator — with session continuity on Claude Code (`--continue`) and the
+  same tool-permission guardrails as autonomous runs. Wire your channel's webhook
+  to this command and the conversation closes the loop.
+- **Quiet-hours guard in code**: `--quiet-from/--quiet-to` config; nudges inside the
+  window are skipped (and logged); replies are never quiet-gated (the writer spoke
+  first); `--force` overrides.
+- `memoir status`: progress + loop-state dashboard (memories/chapters counts, last
+  reply, per-job health, recent runs).
+
+*Design decision vs. the original sketch*: the memoir's own state stays in
+`project_state.md`, owned by the skills — that file **is** the portable invariant
+that lets the book move between runtimes. The driver owns only loop mechanics in
+`driver-state.json`. A schema-validated `project_state.json` mirror is deferred to
+Phase 3, where the adaptive scheduler will need to *read* care notes and cadence
+programmatically.
 
 ## Phase 3 — Caring adaptive drive
 

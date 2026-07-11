@@ -22,6 +22,16 @@ WEEKLY_PROMPT = (
     + NO_PROSE_CLAUSE
 )
 
+# Used by `memoir run --reply` (driver.py): the writer answered a nudge.
+REPLY_PREAMBLE = (
+    "The writer replied to a memoir nudge. As memoir-orchestrator: acknowledge "
+    "briefly and warmly, capture any memory material they shared into memories/ "
+    "as a draft Memory Capture (record only what they actually said — never "
+    "fabricate detail), update project_state.md (snapshot + momentum), and end "
+    "with ONE gentle next step or question." + NO_PROSE_CLAUSE
+    + "\n\nWriter's reply:\n"
+)
+
 
 def _parse_hhmm(value: str) -> tuple[int, int]:
     hh, mm = value.split(":", 1)

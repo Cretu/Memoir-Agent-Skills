@@ -7,6 +7,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Stateful driver** (`memoir run` / `memoir status`, ROADMAP Phase 2):
+  scheduled turns get retries with backoff, timeouts, a JSONL run log, and
+  durable loop state with atomic writes; a two-way loop via
+  `memoir run --reply` (session continuity on Claude Code, same guardrails);
+  a code-level quiet-hours guard (replies are never quiet-gated); and a
+  progress/health dashboard. Cron and systemd artifacts now invoke the driver
+  instead of bare agent calls.
 - **`memoir` CLI** (`memoir_cli/` + `bin/memoir`, ROADMAP Phase 1): the
   capability contract as code. `detect / init / install / schedule / doctor /
   setup` with adapters for claude-code (reference), openclaw, and generic

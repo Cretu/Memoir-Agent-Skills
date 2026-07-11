@@ -15,7 +15,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, detect as detect_mod, notify as notify_mod, workspace as ws_mod
+from . import __version__, detect as detect_mod, driver as driver_mod
+from . import notify as notify_mod, workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
 from .adapters.generic import GenericCronAdapter
@@ -91,6 +92,16 @@ def cmd_schedule(args) -> int:
         print(f"notifier: {args.notify} -> {script}")
 
     artifacts, instructions = adapter.schedule(ws, jobs, notify_cmd)
+
+    # persist driver config (adapter choice + quiet hours) for `memoir run`
+    cfg = driver_mod.load_config(ws)
+    cfg["adapter"] = adapter.id
+    if getattr(args, "agent_cmd", ""):
+        cfg["agent_cmd"] = args.agent_cmd
+    cfg["quiet_from"] = args.quiet_from
+    cfg["quiet_to"] = args.quiet_to
+    driver_mod.save_config(ws, cfg)
+
     print("artifacts:")
     for a in artifacts:
         print(f"  + {a}")
@@ -123,6 +134,32 @@ def cmd_doctor(args) -> int:
     return 1 if failed else 0
 
 
+def cmd_run(args) -> int:
+    ws = Path(args.workspace).expanduser()
+    if args.reply:
+        result = driver_mod.run_reply(
+            ws, args.reply,
+            attempts=args.attempts, retry_delay=args.retry_delay, timeout=args.timeout,
+        )
+    else:
+        result = driver_mod.run_job(
+            ws, args.job,
+            attempts=args.attempts, retry_delay=args.retry_delay,
+            timeout=args.timeout, force=args.force,
+        )
+    if result.output:
+        print(result.output)
+    if not result.ok:
+        print(f"run failed after {result.attempts} attempt(s): {result.error}",
+              file=sys.stderr)
+    return 0 if result.ok else 1
+
+
+def cmd_status(args) -> int:
+    print(driver_mod.status(Path(args.workspace).expanduser(), tail=args.tail))
+    return 0
+
+
 def cmd_setup(args) -> int:
     rc = cmd_init(args)
     rc = rc or cmd_install(args)
@@ -151,6 +188,8 @@ def _add_schedule_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("--to", default="", help="openclaw: delivery target id")
     p.add_argument("--agent-cmd", default="",
                    help="generic: shell template with {prompt} placeholder")
+    p.add_argument("--quiet-from", default="", help="no nudges from HH:MM (e.g. 22:00)")
+    p.add_argument("--quiet-to", default="", help="no nudges until HH:MM (e.g. 08:00)")
     p.add_argument("--apply", action="store_true",
                    help="activate the schedule now (claude-code: merge crontab)")
 
@@ -184,6 +223,25 @@ def main(argv: list[str] | None = None) -> int:
     _add_common(p)
     p.add_argument("--agent-cmd", default="")
     p.set_defaults(func=cmd_doctor)
+
+    p = sub.add_parser(
+        "run", help="stateful driver: execute one job or a writer reply"
+    )
+    p.add_argument("--workspace", required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--job", choices=["daily-nudge", "weekly-review"])
+    g.add_argument("--reply", default="", help="the writer's reply text")
+    p.add_argument("--attempts", type=int, default=driver_mod.DEFAULT_ATTEMPTS)
+    p.add_argument("--retry-delay", type=float, default=driver_mod.DEFAULT_RETRY_DELAY,
+                   help="seconds; doubles per attempt")
+    p.add_argument("--timeout", type=float, default=driver_mod.DEFAULT_TIMEOUT)
+    p.add_argument("--force", action="store_true", help="ignore the quiet window")
+    p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("status", help="progress + loop-state dashboard")
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--tail", type=int, default=5, help="show last N runs")
+    p.set_defaults(func=cmd_status)
 
     p = sub.add_parser("setup", help="init + install + schedule in one command")
     _add_common(p)
