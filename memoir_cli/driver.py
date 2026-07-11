@@ -190,6 +190,9 @@ def run_job(
     force: bool = False,
     now: dt.time | None = None,
 ) -> RunResult:
+    from . import adaptive, care as care_mod  # avoid import cycle
+    from .jobs import SOFTEN_MODIFIER
+
     cfg = load_config(workspace)
     now = now or dt.datetime.now().time()
     if not force and in_quiet_window(now, cfg.get("quiet_from", ""), cfg.get("quiet_to", "")):
@@ -199,9 +202,66 @@ def run_job(
     jobs = {j.id: j for j in standard_jobs()}
     if job_id not in jobs:
         raise SystemExit(f"unknown job {job_id!r}; available: {', '.join(jobs)}")
+
+    prompt = jobs[job_id].prompt
+    if not force:
+        if job_id == "daily-nudge":
+            # full adaptive path: pause, quiet dates, backoff ladder, soften
+            decision = adaptive.decide(workspace)
+            if not decision.send:
+                log_run(workspace, {"kind": "job", "id": job_id, "ok": True,
+                                    "skipped": decision.reason})
+                return RunResult(True, False, 0, "", f"skipped: {decision.reason}")
+            if decision.soften:
+                prompt += SOFTEN_MODIFIER
+        else:
+            # reviews are low-pressure but still honour pause and quiet dates
+            today = dt.date.today()
+            c = care_mod.load(workspace)
+            reason = (
+                f"paused until {c['pause_until']}" if care_mod.is_paused(c, today)
+                else care_mod.quiet_date_reason(c, today)
+            )
+            if reason:
+                log_run(workspace, {"kind": "job", "id": job_id, "ok": True,
+                                    "skipped": reason})
+                return RunResult(True, False, 0, "", f"skipped: {reason}")
+
     adapter = _adapter_for(workspace, cfg)
-    command = adapter.agent_command(workspace, jobs[job_id].prompt)
+    command = adapter.agent_command(workspace, prompt)
     return _execute(workspace, "job", job_id, command, attempts, retry_delay, timeout)
+
+
+# A writer's one-word reply can steer the loop without any agent involvement.
+# Exact matches only — anything longer flows to the agent as a normal reply.
+PAUSE_WORDS = {"pause", "stop", "暂停", "先暂停", "停一停"}
+RESUME_WORDS = {"resume", "continue", "继续", "恢复"}
+
+
+def _care_shortcut(workspace: Path, text: str) -> str | None:
+    """Handle pause/resume keywords. Returns a confirmation message, or None
+    if the reply should flow to the agent."""
+    from . import care as care_mod
+
+    word = text.strip().lower().rstrip("。．.!！ ")
+    today = dt.date.today()
+    c = care_mod.load(workspace)
+    if word in PAUSE_WORDS and not care_mod.is_paused(c, today):
+        until = today + dt.timedelta(days=care_mod.DEFAULT_PAUSE_DAYS)
+        care_mod.set_pause(workspace, until)
+        return (
+            f"Paused — no memoir nudges until {until.isoformat()}. Reply "
+            "'resume' anytime; the memories will keep.\n"
+            f"已暂停回忆录提醒至 {until.isoformat()}，随时回复「继续」即可恢复。"
+            "回忆不会跑掉的。"
+        )
+    if word in RESUME_WORDS and care_mod.is_paused(c, today):
+        care_mod.clear_pause(workspace)
+        return (
+            "Welcome back — nudges resume at your usual cadence.\n"
+            "欢迎回来——提醒将按原节奏恢复。"
+        )
+    return None
 
 
 def run_reply(
@@ -213,6 +273,16 @@ def run_reply(
 ) -> RunResult:
     """Feed the writer's reply into the loop. Never quiet-gated: the writer
     spoke first, so answering is not a nudge."""
+    confirmation = _care_shortcut(workspace, text)
+    if confirmation is not None:
+        delivered = _deliver(workspace, confirmation)
+        state = load_state(workspace)
+        state["last_reply_at"] = _now_iso()
+        save_state(workspace, state)
+        log_run(workspace, {"kind": "care", "id": "pause-resume", "ok": True,
+                            "delivered": delivered})
+        return RunResult(True, delivered, 0, confirmation)
+
     cfg = load_config(workspace)
     adapter = _adapter_for(workspace, cfg)
     prompt = REPLY_PREAMBLE + text
@@ -234,11 +304,17 @@ def status(workspace: Path, tail: int = 5) -> str:
     state = load_state(workspace)
     cfg = load_config(workspace)
 
+    from . import adaptive, care as care_mod  # avoid import cycle
+
+    decision = adaptive.decide(workspace)
     lines = [
         f"workspace: {workspace}",
         f"adapter:   {cfg.get('adapter', '(not configured)')}",
         f"memories:  {len(memories)}   chapters: {len(chapters)}",
         f"last reply from writer: {state.get('last_reply_at') or 'never'}",
+        f"unanswered nudges: {decision.silent_streak}",
+        f"next nudge decision: {'send' if decision.send else 'hold'} — {decision.reason}",
+        care_mod.render(care_mod.load(workspace), dt.date.today()),
     ]
     for job_id, js in sorted(state.get("jobs", {}).items()):
         fails = js.get("consecutive_failures", 0)
