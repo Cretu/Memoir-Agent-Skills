@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate skills & docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate repository (skills, manifest, links, layout)
+        run: python3 scripts/validate.py
+
+      - name: Unit tests (memoir CLI)
+        run: python3 -m unittest discover -s tests -v
+
+      - name: CLI end-to-end smoke (setup + doctor in a temp workspace)
+        run: |
+          WS="$(mktemp -d)/ws"
+          ./bin/memoir setup --workspace "$WS" --adapter claude-code --notify file
+          ./bin/memoir doctor --workspace "$WS" --adapter claude-code || true
+          # doctor may report missing claude/crontab on the runner; assert the
+          # things the CLI itself controls:
+          test -f "$WS/.memoir/autonomous-settings.json"
+          test -f "$WS/.memoir/cron.txt"
+          test -x "$WS/.memoir/notify.sh"
+
+      - name: Shell syntax check
+        run: sh -n deployment/detect-runtime.sh
+
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+          shellcheck deployment/detect-runtime.sh
+
+      - name: Smoke-run runtime detector (read-only)
+        run: sh deployment/detect-runtime.sh

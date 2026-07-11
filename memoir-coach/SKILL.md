@@ -57,7 +57,7 @@ Use the move that fits what's actually in the way:
 
 ## 3. Setting a cadence
 When the writer wants structure, help them choose a realistic rhythm and record it so the
-Orchestrator can schedule around it (see `openclaw-setup.md`):
+Orchestrator can schedule around it (see `deployment/`):
 *   Ask for a cadence they actually believe ("twice a week, 15 min" > "every day, an hour").
 *   Tie it to an existing habit if possible ("after dinner", "Sunday coffee").
 *   Write the agreed cadence and any quiet windows into `project_state.md` (Snapshot /
