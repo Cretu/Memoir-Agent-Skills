@@ -7,6 +7,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`memoir` CLI** (`memoir_cli/` + `bin/memoir`, ROADMAP Phase 1): the
+  capability contract as code. `detect / init / install / schedule / doctor /
+  setup` with adapters for claude-code (reference), openclaw, and generic
+  cron+CLI. Installs skills with tool-name mapping, scaffolds the workspace,
+  generates cron/systemd/launchd artifacts, configures notifiers (ntfy /
+  Telegram / Slack / file) with secrets in a 0600 env file, and enforces the
+  truth contract at the tool-permission layer on Claude Code (autonomous runs
+  cannot write `chapters/`). Unit-tested + e2e-smoked in CI.
 - **Runtime-agnostic deployment layer** (`deployment/`): the four-capability
   contract (C1 files · C2 skills · C3 schedule · C4 notify), per-runtime
   adapters (OpenClaw, Claude Code, Claude Agent SDK, generic cron+CLI, other

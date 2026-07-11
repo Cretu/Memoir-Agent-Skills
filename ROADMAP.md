@@ -18,27 +18,29 @@ Guiding idea for the next phases:
 | 0.b | Driving layer (Orchestrator + Coach) + `project_state.md` ledger | ✅ shipped |
 | 0.c | Runtime-agnostic deployment docs (capability contract, adapters, detector) | ✅ shipped |
 | 0.d | Project engineering (CI, validator, governance docs) | ✅ shipped |
-| 1 | Contract-as-code + real installer | 🔜 next |
+| 1 | Contract-as-code + real installer | ✅ shipped (`memoir_cli/` + `bin/memoir`; reference runtime: Claude Code) |
 | 2 | Stateful driver + structured state | planned |
 | 3 | Caring adaptive drive | planned |
 | 4 | Voice-first capture | planned |
 | 5 | Quality & trust loop (evals + CI extensions) | planned |
 | 6 | Packaging & distribution | planned |
 
-## Phase 1 — Contract-as-code + real installer
+## Phase 1 — Contract-as-code + real installer ✅
 
-Today's adapters are prose and the detector only prints advice. Turn the capability
-contract (C1–C4) into a real interface, and detection into installation.
+Shipped as `memoir_cli/` + `bin/memoir` (stdlib-only Python, unit-tested in CI):
 
-- A small `memoir` CLI: `detect` / `init` / `install` / `schedule` / `doctor` —
-  idempotent, end-to-end setup of one runtime: install skills to the right location,
-  scaffold the workspace, generate real crontab/launchd/systemd units (or
-  `openclaw cron` jobs), configure the notifier with secrets stored safely.
-- Adapter interface each runtime implements:
-  `install_skills(bundle, workspace)` · `state_store()` · `schedule(jobs[])` ·
-  `notify(msg, target)` · `run(prompt, mode, tools)`.
-- Reference implementation first (Claude Code — locally testable), designed so the
-  OpenClaw and Agent SDK adapters plug into the same interface.
+- `memoir detect / init / install / schedule / doctor / setup` — idempotent,
+  end-to-end setup: workspace scaffolding, skills installed with tool names mapped
+  per the contract, real crontab/systemd/launchd artifacts (or `openclaw cron`
+  registration script), notifier with secrets in a 0600 env file,
+  `schedule --apply` for marker-delimited crontab merging.
+- `Adapter` ABC in `memoir_cli/contract.py`: `detect` · `install_skills` ·
+  `agent_command` · `schedule` · `doctor`. Implementations: **claude-code**
+  (reference), **openclaw**, **generic**.
+- First tool-permission-level safety enforcement: Claude Code autonomous runs get
+  a settings file denying Write/Edit under `chapters/` (deepened in Phase 2).
+
+Remaining for later phases: SDK adapter as code, richer OpenClaw automation.
 
 ## Phase 2 — Stateful driver + structured state
 

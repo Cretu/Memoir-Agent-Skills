@@ -1,14 +1,18 @@
 # Memoir Agent Skills — developer tasks
 
-.PHONY: all validate lint detect help
+.PHONY: all validate test lint detect help
 
-all: validate lint
+all: validate test lint
 
 help:
 	@echo "make validate  - run repo validator (skills, manifest, links, layout)"
+	@echo "make test      - run memoir CLI unit tests"
 	@echo "make lint      - shell syntax check (+ shellcheck if installed)"
 	@echo "make detect    - run the read-only runtime detector"
-	@echo "make all       - validate + lint"
+	@echo "make all       - validate + test + lint"
+
+test:
+	python3 -m unittest discover -s tests
 
 validate:
 	python3 scripts/validate.py

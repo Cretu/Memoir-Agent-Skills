@@ -136,14 +136,23 @@ memoir-agent-skills/
 
 Each skill can be used independently or as part of the full workflow. See individual skill directories for detailed documentation.
 
-**Quick start**: run `sh deployment/detect-runtime.sh` to find the right adapter for your
-environment, wire up the four capabilities it reports, then ask the agent
-*"Where are we with my memoir?"* — the Orchestrator takes it from there.
+**Quick start (one command)**:
+
+```sh
+./bin/memoir setup --workspace ~/memoir --notify ntfy --ntfy-topic <topic>
+./bin/memoir doctor --workspace ~/memoir
+```
+
+This scaffolds the workspace, installs the skills into your runtime (auto-detected;
+`--adapter` to override), and generates the daily-nudge + weekly-review schedule.
+Then ask the agent *"Where are we with my memoir?"* — the Orchestrator takes it from
+there. Manual setup: see [deployment/](deployment/).
 
 ## Development
 
 ```sh
 make validate   # skills, manifest, links, layout (same checks as CI)
+make test       # memoir CLI unit tests
 make lint       # shell syntax (+ shellcheck if installed)
 make detect     # run the read-only runtime detector
 ```

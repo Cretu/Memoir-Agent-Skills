@@ -11,8 +11,27 @@ your runtime ──provides──▶ C1 files · C2 skills · C3 schedule · C4 
               the same skills + project_state.md run on top, unchanged
 ```
 
-## Quick start
-1. **Detect your environment**: `sh deployment/detect-runtime.sh`
+## Quick start — one command (memoir CLI)
+
+The contract is also implemented **as code** (`memoir_cli/`, see `ROADMAP.md` Phase 1):
+
+```sh
+./bin/memoir setup --workspace ~/memoir \
+    --notify ntfy --ntfy-topic my-memoir-topic   # or telegram/slack/file
+./bin/memoir doctor --workspace ~/memoir          # verify end to end
+./bin/memoir schedule --workspace ~/memoir --apply  # activate the crontab block
+```
+
+`setup` = `init` (scaffold the C1 data model) + `install` (skills into the runtime,
+with tool names mapped per the contract) + `schedule` (daily-nudge + weekly-review
+artifacts for cron/systemd/launchd, notifier with secrets in a 0600 env file).
+The adapter is auto-picked (`--adapter openclaw|claude-code|generic` to override).
+On Claude Code, autonomous runs get a generated settings file that **denies
+Write/Edit under `chapters/`** — the truth contract enforced at the tool-permission
+layer, not just in prompt text.
+
+## Quick start — manual
+1. **Detect your environment**: `sh deployment/detect-runtime.sh` (or `./bin/memoir detect`)
    It reports which runtimes and schedulers are present and points you at an adapter.
 2. **Open the matching [adapter](adapters/)** and wire up C1–C4.
 3. **Smoke-test**: start a session and ask *"Where are we with my memoir?"* — the
