@@ -15,8 +15,9 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, care as care_mod, detect as detect_mod
-from . import driver as driver_mod, notify as notify_mod, workspace as ws_mod
+from . import __version__, capture as capture_mod, care as care_mod
+from . import detect as detect_mod, driver as driver_mod
+from . import notify as notify_mod, workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
 from .adapters.generic import GenericCronAdapter
@@ -100,6 +101,8 @@ def cmd_schedule(args) -> int:
         cfg["agent_cmd"] = args.agent_cmd
     cfg["quiet_from"] = args.quiet_from
     cfg["quiet_to"] = args.quiet_to
+    if getattr(args, "transcribe_cmd", ""):
+        cfg["transcribe_cmd"] = args.transcribe_cmd
     driver_mod.save_config(ws, cfg)
 
     print("artifacts:")
@@ -160,6 +163,47 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_capture(args) -> int:
+    ws = Path(args.workspace).expanduser()
+    run_agent = not args.no_agent
+    if args.text:
+        result = capture_mod.capture_text(ws, args.text, run_agent=run_agent,
+                                          timeout=args.timeout)
+    else:
+        src = Path(args.file).expanduser() if args.file else None
+        kind = args.kind
+        if kind == "auto":
+            kind = capture_mod.guess_kind(src)
+            if kind == "unknown":
+                raise SystemExit(
+                    f"cannot tell whether {src.name} is audio or a photo — "
+                    "pass --kind audio|photo"
+                )
+        if kind == "audio":
+            result = capture_mod.capture_voice(
+                ws, src, run_agent=run_agent,
+                transcribe_timeout=args.transcribe_timeout, timeout=args.timeout,
+            )
+        else:
+            result = capture_mod.capture_photo(
+                ws, src, note=args.note, run_agent=run_agent, timeout=args.timeout
+            )
+
+    print(f"captured -> {result.path.relative_to(ws)}")
+    if result.asset:
+        print(f"photo    -> {result.asset.relative_to(ws)}")
+    preview = result.text.strip().splitlines()[0][:80] if result.text.strip() else ""
+    if preview:
+        print(f"first line: {preview}")
+    if result.agent_ran:
+        if result.agent_output.strip():
+            print("\n" + result.agent_output.strip())
+        print(f"(delivered to the writer: {'yes' if result.delivered else 'no'})")
+    else:
+        print("(agent not run — shape it in your next session)")
+    return 0
+
+
 def cmd_care(args) -> int:
     import datetime as dt
 
@@ -216,6 +260,9 @@ def _add_schedule_opts(p: argparse.ArgumentParser) -> None:
                    help="generic: shell template with {prompt} placeholder")
     p.add_argument("--quiet-from", default="", help="no nudges from HH:MM (e.g. 22:00)")
     p.add_argument("--quiet-to", default="", help="no nudges until HH:MM (e.g. 08:00)")
+    p.add_argument("--transcribe-cmd", default="",
+                   help="voice capture: command printing a transcript, with {file} "
+                        "(e.g. 'whisper-cli -f {file} --no-timestamps')")
     p.add_argument("--apply", action="store_true",
                    help="activate the schedule now (claude-code: merge crontab)")
 
@@ -268,6 +315,23 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workspace", required=True)
     p.add_argument("--tail", type=int, default=5, help="show last N runs")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser(
+        "capture", help="voice note / photo / typed note -> raw material in memories/"
+    )
+    p.add_argument("--workspace", required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--file", default="", help="path to a voice note or photograph")
+    g.add_argument("--text", default="", help="a quick typed note")
+    p.add_argument("--kind", choices=["auto", "audio", "photo"], default="auto",
+                   help="how to treat --file (default: from its extension)")
+    p.add_argument("--note", default="", help="photo: what the writer said about it")
+    p.add_argument("--no-agent", action="store_true",
+                   help="just file it; don't ask the agent to shape it now")
+    p.add_argument("--timeout", type=float, default=driver_mod.DEFAULT_TIMEOUT)
+    p.add_argument("--transcribe-timeout", type=float,
+                   default=capture_mod.DEFAULT_TRANSCRIBE_TIMEOUT)
+    p.set_defaults(func=cmd_capture)
 
     p = sub.add_parser("care", help="pause/resume, quiet dates, cadence (the scheduler obeys)")
     care_sub = p.add_subparsers(dest="care_action", required=True)

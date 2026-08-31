@@ -7,8 +7,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from shlex import quote as shlex_quote
 
 from memoir_cli import adaptive as adaptive_mod
+from memoir_cli import capture as capture_mod
 from memoir_cli import care as care_mod
 from memoir_cli import detect as detect_mod
 from memoir_cli import driver as driver_mod
@@ -452,6 +454,144 @@ class TestDriverCareIntegration(unittest.TestCase):
             ws = self._ws(tmp)
             result = driver_mod.run_reply(ws, "继续", retry_delay=0)
             self.assertIn("agent got:", result.output)      # normal reply path
+
+
+class TestCapture(unittest.TestCase):
+    """Voice-first / photo-anchored capture (Phase 4)."""
+
+    def _ws(self, tmp: str, transcript: str = "", agent: bool = True) -> Path:
+        ws = Path(tmp) / "ws"
+        ws_mod.init(REPO, ws)
+        notify_mod.write_notifier(ws, "file", {})
+        cfg = {}
+        if agent:
+            stub = Path(tmp) / "agent.sh"
+            stub.write_text(
+                '#!/bin/sh\necho "Thank you — noted. What happened next?"\n',
+                encoding="utf-8",
+            )
+            stub.chmod(0o755)
+            cfg.update({"adapter": "generic", "agent_cmd": f"{stub} {{prompt}}"})
+        if transcript:
+            asr = Path(tmp) / "asr.sh"
+            asr.write_text(
+                f'#!/bin/sh\n[ -f "$1" ] || exit 3\nprintf %s {shlex_quote(transcript)}\n',
+                encoding="utf-8",
+            )
+            asr.chmod(0o755)
+            cfg["transcribe_cmd"] = f"{asr} {{file}}"
+        driver_mod.save_config(ws, cfg)
+        return ws
+
+    def test_voice_note_is_transcribed_and_filed(self):
+        transcript = "外婆的厨房总是有酱油和八角的味道"
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp, transcript=transcript)
+            audio = Path(tmp) / "note.m4a"
+            audio.write_bytes(b"fake audio")
+            result = capture_mod.capture_voice(ws, audio, timeout=30)
+            self.assertEqual(result.text, transcript)
+            body = result.path.read_text(encoding="utf-8")
+            self.assertIn(transcript, body)
+            self.assertIn("**raw**", body)              # flagged as unshaped
+            self.assertIn("note.m4a", body)             # provenance kept
+            self.assertTrue(result.path.is_relative_to(ws / "memories" / "inbox"))
+            # the agent was asked to shape it, and only its ack went out
+            self.assertTrue(result.agent_ran)
+            self.assertIn("What happened next?", result.agent_output)
+            delivered = (ws / ".memoir" / "nudges.log").read_text(encoding="utf-8")
+            self.assertIn("What happened next?", delivered)
+            self.assertNotIn(transcript, delivered)     # memoir content stays local
+
+    def test_capture_prompt_forbids_quoting_content_to_the_channel(self):
+        self.assertIn("sent to a chat channel", capture_mod.CAPTURE_PROMPT)
+        self.assertIn("Do not", capture_mod.CAPTURE_PROMPT)
+        self.assertIn("never invent", capture_mod.CAPTURE_PROMPT)
+        self.assertIn("Do NOT draft", capture_mod.CAPTURE_PROMPT)  # truth contract
+
+    def test_missing_transcribe_cmd_is_a_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)                          # no transcribe_cmd
+            audio = Path(tmp) / "note.m4a"
+            audio.write_bytes(b"x")
+            with self.assertRaises(SystemExit) as cm:
+                capture_mod.capture_voice(ws, audio)
+            self.assertIn("transcribe-cmd", str(cm.exception))
+
+    def test_failed_transcription_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp, transcript="ignored")
+            missing = Path(tmp) / "does-not-exist.m4a"
+            with self.assertRaises(SystemExit):
+                capture_mod.capture_voice(ws, missing)
+            self.assertEqual(capture_mod.inbox_status(ws), (0, []))
+
+    def test_photo_is_copied_and_anchored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            photo = Path(tmp) / "grandma.JPG"
+            photo.write_bytes(b"\xff\xd8fake jpeg")
+            result = capture_mod.capture_photo(
+                ws, photo, note="1978年的夏天，外婆家门口", timeout=30
+            )
+            self.assertIsNotNone(result.asset)
+            self.assertTrue(result.asset.is_file())
+            self.assertEqual(result.asset.suffix, ".jpg")      # normalized
+            self.assertEqual(result.asset.read_bytes(), photo.read_bytes())
+            body = result.path.read_text(encoding="utf-8")
+            self.assertIn("memories/photos/", body)            # anchored link
+            self.assertIn("1978", body)
+
+    def test_photo_without_note_still_opens_a_capture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp, agent=False)
+            photo = Path(tmp) / "img.png"
+            photo.write_bytes(b"png")
+            result = capture_mod.capture_photo(ws, photo, run_agent=False)
+            self.assertIn("no note yet", result.path.read_text(encoding="utf-8"))
+            self.assertFalse(result.agent_ran)
+
+    def test_no_agent_flag_files_without_calling_the_agent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp)
+            result = capture_mod.capture_text(ws, "a quick thought", run_agent=False)
+            self.assertFalse(result.agent_ran)
+            self.assertFalse((ws / ".memoir" / "nudges.log").exists())
+            self.assertEqual(capture_mod.inbox_status(ws)[0], 1)
+
+    def test_empty_capture_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp, agent=False)
+            with self.assertRaises(SystemExit):
+                capture_mod.capture_text(ws, "   ")
+
+    def test_slugify_keeps_unicode_and_neutralizes_path_characters(self):
+        self.assertEqual(capture_mod.slugify("外婆的厨房"), "外婆的厨房")
+        self.assertEqual(capture_mod.slugify("a/b\\c d"), "a-b-c-d")
+        self.assertEqual(capture_mod.slugify(""), "capture")
+        self.assertLessEqual(len(capture_mod.slugify("x" * 200)), 48)
+        # a transcript can say anything; a slug must never escape the inbox
+        for hostile in ("../../etc/passwd", "..", "/absolute/path", "a\x00b"):
+            slug = capture_mod.slugify(hostile)
+            self.assertNotIn("/", slug)
+            self.assertNotIn("\\", slug)
+            self.assertNotIn("\x00", slug)
+            self.assertNotEqual(slug.strip("."), "")
+            self.assertEqual(Path(slug).name, slug)
+
+    def test_kind_detection(self):
+        self.assertEqual(capture_mod.guess_kind(Path("a.M4A")), "audio")
+        self.assertEqual(capture_mod.guess_kind(Path("a.heic")), "photo")
+        self.assertEqual(capture_mod.guess_kind(Path("a.txt")), "unknown")
+
+    def test_status_surfaces_unshaped_captures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = self._ws(tmp, agent=False)
+            capture_mod.capture_text(ws, "one", run_agent=False)
+            capture_mod.capture_text(ws, "two", run_agent=False)
+            out = driver_mod.status(ws)
+            self.assertIn("raw captures awaiting shaping: 2", out)
+            self.assertIn("memories:  0", out)   # inbox isn't counted as memories
 
 
 class TestDetect(unittest.TestCase):

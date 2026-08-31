@@ -7,6 +7,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Voice-first and photo-anchored capture** (`memoir capture`, ROADMAP
+  Phase 4): a voice note (via a pluggable `--transcribe-cmd`), a photograph,
+  or a typed line becomes raw material in `memories/inbox/` for the agent to
+  shape into a Memory Capture. Memoir content stays local — only the agent's
+  short acknowledgement is delivered to the chat channel. Unshaped captures
+  are surfaced in `memoir status`.
 - **Caring adaptive drive** (ROADMAP Phase 3): a signal-driven scheduler
   (`adaptive.py`) that backs off and softens instead of badgering — 3+
   unanswered nudges → every 2 days with a smaller ask, 6+ → weekly floor, any

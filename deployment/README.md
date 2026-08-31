@@ -38,6 +38,19 @@ channel's inbound webhook to `./bin/memoir run --workspace ~/memoir --reply "<th
 writer's message>"` — on Claude Code the reply continues the agent's most recent
 session, so it remembers what it asked.
 
+**Capture by voice or photo** — often the easiest way in, especially for older
+writers. Configure a transcriber once (`--transcribe-cmd 'whisper-cli -f {file}
+--no-timestamps'`, or any command that prints a transcript), then:
+
+```sh
+./bin/memoir capture --workspace ~/memoir --file ~/voice-notes/grandma.m4a
+./bin/memoir capture --workspace ~/memoir --file ~/photos/1978.jpg --note "外婆家门口"
+```
+
+The material lands in `memories/inbox/` and the agent shapes it into a Memory
+Capture. The transcript stays on your machine: only the agent's short
+acknowledgement goes out through the channel.
+
 Nudging is **adaptive, not mechanical**: if the writer stops replying, the scheduler
 backs off (3+ unanswered → every 2 days with a smaller, softer ask; 6+ → weekly) and
 any reply resets the rhythm. The writer stays in control with one word — replying

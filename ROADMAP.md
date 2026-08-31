@@ -21,7 +21,7 @@ Guiding idea for the next phases:
 | 1 | Contract-as-code + real installer | ✅ shipped (`memoir_cli/` + `bin/memoir`; reference runtime: Claude Code) |
 | 2 | Stateful driver + structured state | ✅ shipped (`memoir run` / `memoir status`) |
 | 3 | Caring adaptive drive | ✅ shipped (`adaptive.py` + `care.json` + `memoir care`) |
-| 4 | Voice-first capture | planned |
+| 4 | Voice-first capture | ✅ shipped (`memoir capture`) |
 | 5 | Quality & trust loop (evals + CI extensions) | planned |
 | 6 | Packaging & distribution | planned |
 
@@ -87,13 +87,26 @@ Shipped as `memoir_cli/adaptive.py` + `memoir_cli/care.py` (+ `memoir care` CLI)
 - `memoir status` shows the streak, the next-nudge decision and reason, and the care
   settings. Topic-level care notes stay narrative in `project_state.md` for the agent.
 
-## Phase 4 — Voice-first capture
+## Phase 4 — Voice-first capture ✅
 
-For memoirs — especially with older writers — speaking beats typing.
+Shipped as `memoir_cli/capture.py` (`memoir capture`): a voice note, a photograph,
+or a quick typed line becomes raw material in `memories/inbox/`, which the agent
+then shapes into a proper Memory Capture.
 
-- Voice-note transcription as a first-class Recall input (channel-side).
-- Photo-anchored recall ("tell me about this picture").
-- Optionally interview-style calls driven by the recall question sets.
+- **Pluggable transcription, nothing bundled**: you supply the command
+  (`--transcribe-cmd 'whisper-cli -f {file} --no-timestamps'`), exactly like the
+  generic adapter's agent command. No ASR service is hardcoded and nothing leaves
+  the machine unless you configured it to.
+- **Photo-anchored recall**: the image is copied into `memories/photos/` and linked
+  from the capture; runtimes whose agent can read image files look at it directly.
+- **Privacy boundary enforced**: the transcript is written locally and never sent to
+  the chat channel — only the agent's short acknowledgement goes out, and the
+  capture prompt says so explicitly (verified by a test asserting the transcript
+  does not appear in delivered messages).
+- Raw captures are flagged `Status: **raw**` and surfaced in `memoir status` until
+  shaped, so nothing silently rots in the inbox.
+
+Not done here: interview-style calls (a channel/telephony concern, not a CLI one).
 
 ## Phase 5 — Quality & trust loop
 

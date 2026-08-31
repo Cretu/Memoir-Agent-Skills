@@ -304,13 +304,15 @@ def status(workspace: Path, tail: int = 5) -> str:
     state = load_state(workspace)
     cfg = load_config(workspace)
 
-    from . import adaptive, care as care_mod  # avoid import cycle
+    from . import adaptive, capture as capture_mod, care as care_mod  # avoid cycle
 
     decision = adaptive.decide(workspace)
+    inbox_count, _ = capture_mod.inbox_status(workspace)
     lines = [
         f"workspace: {workspace}",
         f"adapter:   {cfg.get('adapter', '(not configured)')}",
-        f"memories:  {len(memories)}   chapters: {len(chapters)}",
+        f"memories:  {len(memories)}   chapters: {len(chapters)}"
+        + (f"   raw captures awaiting shaping: {inbox_count}" if inbox_count else ""),
         f"last reply from writer: {state.get('last_reply_at') or 'never'}",
         f"unanswered nudges: {decision.silent_streak}",
         f"next nudge decision: {'send' if decision.send else 'hold'} — {decision.reason}",
