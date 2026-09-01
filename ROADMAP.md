@@ -22,7 +22,7 @@ Guiding idea for the next phases:
 | 2 | Stateful driver + structured state | ✅ shipped (`memoir run` / `memoir status`) |
 | 3 | Caring adaptive drive | ✅ shipped (`adaptive.py` + `care.json` + `memoir care`) |
 | 4 | Voice-first capture | ✅ shipped (`memoir capture`) |
-| 5 | Quality & trust loop (evals + CI extensions) | planned |
+| 5 | Quality & trust loop (evals + CI extensions) | ✅ shipped (`memoir lint` + golden corpus) |
 | 6 | Packaging & distribution | planned |
 
 ## Phase 1 — Contract-as-code + real installer ✅
@@ -108,15 +108,31 @@ then shapes into a proper Memory Capture.
 
 Not done here: interview-style calls (a channel/telephony concern, not a CLI one).
 
-## Phase 5 — Quality & trust loop
+## Phase 5 — Quality & trust loop ✅
 
-The confidence to hand your life story to an agent comes from tests.
+The confidence to hand your life story to an agent comes from being able to check it.
 
-- CI extensions: skill linting stays; add state-schema validation and adapter matrix
-  smoke runs.
-- Evals: a truth-contract linter (flag invented concrete details), golden-conversation
-  regressions for Orchestrator routing, LLM-judge rubrics for restraint/fairness of
-  generated prose.
+- **`memoir lint` — the truth-contract linter** (`memoir_cli/lint.py`): reads the prose
+  in `chapters/`, extracts the concrete claims (years, dates, ages, quantities, proper
+  names, quoted dialogue) and reports the ones with no trace in `memories/`. Spelled-out
+  numbers included ("sixty-four", "three weeks"). Reconstructed dialogue is its own,
+  softer category — normal in memoir, but it belongs in the author's note.
+  `--format json` for tooling, `--fail-on` for CI, `.memoir/lint-allow.txt` for details
+  that are genuinely the writer's and simply unwritten.
+- **Golden corpus + eval in CI** (`tests/fixtures/lint/`): one chapter that invents
+  details and one that is faithfully grounded. CI asserts *both* directions — the
+  linter must flag all six invented details and must stay completely silent on the
+  well-sourced chapter. A linter that never fires is useless; one that cries wolf gets
+  switched off and stops protecting anyone. `make eval` runs it locally.
+
+Stated plainly, what this is and is not: it is a reviewer's checklist generator, not a
+truth oracle. It cannot know what the writer remembers but never wrote down, so false
+positives are the intended failure mode. Proper-noun detection is Latin-script only —
+for CJK prose it leans on dates, numbers and dialogue.
+
+Still open: LLM-judge rubrics for restraint and fairness of generated prose, and
+golden-conversation regressions for Orchestrator routing — both need a live model, so
+they belong with a runner that can call one rather than in this deterministic suite.
 
 ## Phase 6 — Packaging & distribution
 

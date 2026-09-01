@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 from . import __version__, capture as capture_mod, care as care_mod
-from . import detect as detect_mod, driver as driver_mod
+from . import detect as detect_mod, driver as driver_mod, lint as lint_mod
 from . import notify as notify_mod, workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
@@ -204,6 +204,21 @@ def cmd_capture(args) -> int:
     return 0
 
 
+def cmd_lint(args) -> int:
+    ws = Path(args.workspace).expanduser()
+    findings = lint_mod.lint_workspace(
+        ws,
+        chapters_dir=Path(args.chapters).expanduser() if args.chapters else None,
+        memories_dir=Path(args.memories).expanduser() if args.memories else None,
+    )
+    print(lint_mod.render(findings, as_json=args.format == "json"))
+    if args.fail_on == "never":
+        return 0
+    if args.fail_on == "any":
+        return 1 if findings else 0
+    return 1 if any(f.kind == lint_mod.KIND_UNSUPPORTED for f in findings) else 0
+
+
 def cmd_care(args) -> int:
     import datetime as dt
 
@@ -332,6 +347,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--transcribe-timeout", type=float,
                    default=capture_mod.DEFAULT_TRANSCRIBE_TIMEOUT)
     p.set_defaults(func=cmd_capture)
+
+    p = sub.add_parser(
+        "lint", help="truth-contract check: concrete details in chapters/ with no "
+                     "trace in memories/"
+    )
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--chapters", default="", help="override the chapters directory")
+    p.add_argument("--memories", default="", help="override the memories directory")
+    p.add_argument("--format", choices=["text", "json"], default="text")
+    p.add_argument("--fail-on", choices=["never", "unsupported", "any"],
+                   default="never",
+                   help="exit non-zero on findings (default: never — it is advisory)")
+    p.set_defaults(func=cmd_lint)
 
     p = sub.add_parser("care", help="pause/resume, quiet dates, cadence (the scheduler obeys)")
     care_sub = p.add_subparsers(dest="care_action", required=True)

@@ -26,6 +26,21 @@ jobs:
       - name: Unit tests (memoir CLI)
         run: python3 -m unittest discover -s tests -v
 
+      - name: Truth-contract linter eval (golden fixture)
+        run: |
+          # the invented-details chapter must fail a strict run ...
+          if ./bin/memoir lint --workspace tests/fixtures/lint \
+               --chapters tests/fixtures/lint/chapters \
+               --memories tests/fixtures/lint/memories \
+               --fail-on unsupported; then
+            echo "FAIL: linter did not flag the invented details"; exit 1
+          fi
+          # ... and the faithfully-sourced chapter must pass it
+          ./bin/memoir lint --workspace tests/fixtures/lint \
+            --chapters tests/fixtures/lint/clean-chapters \
+            --memories tests/fixtures/lint/memories \
+            --fail-on any
+
       - name: CLI end-to-end smoke (setup + doctor in a temp workspace)
         run: |
           WS="$(mktemp -d)/ws"

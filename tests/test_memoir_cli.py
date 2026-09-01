@@ -14,6 +14,7 @@ from memoir_cli import capture as capture_mod
 from memoir_cli import care as care_mod
 from memoir_cli import detect as detect_mod
 from memoir_cli import driver as driver_mod
+from memoir_cli import lint as lint_mod
 from memoir_cli import notify as notify_mod
 from memoir_cli import workspace as ws_mod
 from memoir_cli.adapters.claude_code import (
@@ -592,6 +593,103 @@ class TestCapture(unittest.TestCase):
             out = driver_mod.status(ws)
             self.assertIn("raw captures awaiting shaping: 2", out)
             self.assertIn("memories:  0", out)   # inbox isn't counted as memories
+
+
+class TestTruthContractLint(unittest.TestCase):
+    """Golden corpus for the truth-contract linter (Phase 5).
+
+    The fixture pairs memories/ (the source material) with two chapters: one
+    that invents details and one that is faithfully grounded. Both directions
+    matter — a linter that never fires is useless, and one that fires on
+    well-sourced prose gets switched off and stops protecting anyone.
+    """
+
+    FIXTURE = REPO / "tests" / "fixtures" / "lint"
+
+    def _run(self, chapters: str):
+        return lint_mod.lint_workspace(
+            self.FIXTURE,
+            chapters_dir=self.FIXTURE / chapters,
+            memories_dir=self.FIXTURE / "memories",
+        )
+
+    def test_catches_every_invented_detail(self):
+        findings = self._run("chapters")
+        claims = {f.claim for f in findings}
+        # a drifted date, an invented name and place, a fabricated count,
+        # and two quantities with no source
+        self.assertIn("1981", claims)          # memories say 1978
+        self.assertIn("Lin", claims)           # sister's name never recorded
+        self.assertIn("Harbin", claims)        # place never recorded
+        self.assertIn("1200", claims)          # invented number of houses
+        self.assertIn("sixty-four", claims)    # spelled-out age
+        self.assertIn("three weeks", claims)   # spelled-out duration
+        unsupported = [f for f in findings if f.kind == lint_mod.KIND_UNSUPPORTED]
+        self.assertEqual(len(unsupported), 6, sorted(claims))
+
+    def test_reconstructed_dialogue_is_its_own_softer_category(self):
+        findings = self._run("chapters")
+        dialogue = [f for f in findings if f.kind == lint_mod.KIND_DIALOGUE]
+        self.assertEqual(len(dialogue), 1)
+        self.assertIn("quiet one", dialogue[0].claim)
+        self.assertIn("author's note", dialogue[0].detail)
+        # dialogue recorded verbatim in memories is NOT flagged
+        self.assertNotIn("come and eat", " ".join(f.claim for f in dialogue))
+
+    def test_faithful_chapter_produces_no_findings(self):
+        """The false-positive guard: grounded prose must be silent."""
+        self.assertEqual(self._run("clean-chapters"), [])
+
+    def test_supported_details_are_never_flagged(self):
+        claims = {f.claim for f in self._run("chapters")}
+        for grounded in ("Mei", "1978", "2 miles", "seven"):
+            self.assertNotIn(grounded, claims)
+
+    def test_allowlist_suppresses_a_finding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            (ws / ".memoir").mkdir()
+            (ws / ".memoir" / "lint-allow.txt").write_text(
+                "# details the writer confirms from memory\nHarbin\n1981\n",
+                encoding="utf-8",
+            )
+            (ws / "chapters").mkdir()
+            (ws / "memories").mkdir()
+            (ws / "memories" / "m.md").write_text("We left the city.", encoding="utf-8")
+            (ws / "chapters" / "c.md").write_text(
+                "We left in 1981 for Harbin, with Wei.", encoding="utf-8"
+            )
+            claims = {f.claim for f in lint_mod.lint_workspace(ws)}
+            self.assertNotIn("1981", claims)     # allowlisted
+            self.assertNotIn("Harbin", claims)   # allowlisted
+            self.assertIn("Wei", claims)         # still caught
+
+    def test_json_output_is_machine_readable(self):
+        findings = self._run("chapters")
+        data = json.loads(lint_mod.render(findings, as_json=True))
+        self.assertEqual(len(data), len(findings))
+        self.assertEqual(
+            set(data[0]), {"file", "line", "kind", "claim", "detail"}
+        )
+        self.assertTrue(all(d["line"] > 0 for d in data))
+
+    def test_structure_and_code_blocks_are_not_prose(self):
+        findings = lint_mod.extract_findings(
+            "# Heading With Names\n"
+            "```\ncode Sample 1999\n```\n"
+            "Real prose about Nobody.\n",
+            "c.md", corpus="", allow=set(),
+        )
+        claims = {f.claim for f in findings}
+        self.assertNotIn("1999", claims)         # inside a fence
+        self.assertNotIn("Heading", claims)      # markdown heading
+        self.assertIn("Nobody", claims)          # actual prose is checked
+
+    def test_render_is_honest_about_being_heuristic(self):
+        self.assertIn("confirms nothing", lint_mod.render([]))
+        text = lint_mod.render(self._run("chapters"))
+        self.assertIn("not verdicts", text)
+        self.assertIn("lint-allow.txt", text)
 
 
 class TestDetect(unittest.TestCase):

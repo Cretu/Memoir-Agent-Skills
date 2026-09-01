@@ -51,6 +51,17 @@ The material lands in `memories/inbox/` and the agent shapes it into a Memory
 Capture. The transcript stays on your machine: only the agent's short
 acknowledgement goes out through the channel.
 
+**Check the prose against the notes** before anything is published:
+
+```sh
+./bin/memoir lint --workspace ~/memoir
+```
+
+It reports concrete details in `chapters/` with no trace in `memories/` — a drifted
+date, a name that was never recorded, a quantity that appeared from nowhere — plus
+reconstructed dialogue to disclose in the author's note. It is a checklist, not a
+verdict; confirm each item or add it to `.memoir/lint-allow.txt`.
+
 Nudging is **adaptive, not mechanical**: if the writer stops replying, the scheduler
 backs off (3+ unanswered → every 2 days with a smaller, softer ask; 6+ → weekly) and
 any reply resets the rhythm. The writer stays in control with one word — replying

@@ -129,6 +129,7 @@ memoir-agent-skills/
 - **Project Compass**: Reader, scope, and theme set up front, so structure builds toward meaning rather than a list of events.
 - **Trauma-Informed Recall**: Painful memories are approached at the writer's pace, with consent checks and stopping signals.
 - **Responsibility by Design**: Writing about real people, the truth contract, and emotional safety are built into every phase, not bolted on.
+- **Checkable Truth Contract**: `memoir lint` flags concrete details in your chapters that appear nowhere in your notes — a drifted date, an invented name — so the agent's fluency can never quietly become fiction.
 - **Dedicated Revision Phase**: Developmental, line, continuity, and fairness/accuracy passes before a memoir is called done.
 - **Style Calibration**: A centralized style guide ensures consistent voice throughout the memoir.
 
@@ -154,6 +155,7 @@ there. Manual setup: see [deployment/](deployment/).
 make validate   # skills, manifest, links, layout (same checks as CI)
 make test       # memoir CLI unit tests
 make lint       # shell syntax (+ shellcheck if installed)
+make eval       # truth-contract linter against the golden corpus
 make detect     # run the read-only runtime detector
 ```
 

@@ -7,6 +7,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Truth-contract linter** (`memoir lint`, ROADMAP Phase 5): flags concrete
+  details in `chapters/` — years, quantities (digits and spelled-out), proper
+  names, quoted dialogue — that have no trace in `memories/`, so invented
+  detail is caught before publication. Reconstructed dialogue is reported
+  separately as an author's-note disclosure, not an error. JSON output,
+  `--fail-on` for CI, and `.memoir/lint-allow.txt` to suppress details the
+  writer confirms from memory.
+- **Golden eval corpus + CI check** (`tests/fixtures/lint/`, `make eval`): CI
+  asserts the linter flags every invented detail in one chapter *and* stays
+  silent on a faithfully-sourced one.
 - **Voice-first and photo-anchored capture** (`memoir capture`, ROADMAP
   Phase 4): a voice note (via a pluggable `--transcribe-cmd`), a photograph,
   or a typed line becomes raw material in `memories/inbox/` for the agent to
@@ -20,11 +30,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   dates, cadence) enforced in code and managed via `memoir care`; one-word
   writer control (「暂停」/"pause", 「继续」/"resume") handled without the
   agent; `memoir status` shows the streak and next-nudge decision.
-
-### Fixed
-- `care.load()` deep-copies defaults — quiet dates/cadence added in one
-  workspace no longer leak into others through the module-level defaults
-  (caught by the test suite's cross-test interference).
 - **Stateful driver** (`memoir run` / `memoir status`, ROADMAP Phase 2):
   scheduled turns get retries with backoff, timeouts, a JSONL run log, and
   durable loop state with atomic writes; a two-way loop via
@@ -48,6 +53,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Project engineering**: CI (skill/link/layout validation, ShellCheck,
   detector smoke run), `scripts/validate.py`, `Makefile`, LICENSE, CHANGELOG,
   CONTRIBUTING, SECURITY, ROADMAP, issue/PR templates, `.editorconfig`.
+
+### Fixed
+- `care.load()` deep-copies defaults — quiet dates/cadence added in one
+  workspace no longer leak into others through the module-level defaults
+  (caught by the test suite's cross-test interference).
 
 ### Changed
 - Orchestrator/Coach wording generalized from hardcoded "cron/heartbeat" to
