@@ -38,6 +38,36 @@ channel's inbound webhook to `./bin/memoir run --workspace ~/memoir --reply "<th
 writer's message>"` — on Claude Code the reply continues the agent's most recent
 session, so it remembers what it asked.
 
+**Capture by voice or photo** — often the easiest way in, especially for older
+writers. Configure a transcriber once (`--transcribe-cmd 'whisper-cli -f {file}
+--no-timestamps'`, or any command that prints a transcript), then:
+
+```sh
+./bin/memoir capture --workspace ~/memoir --file ~/voice-notes/grandma.m4a
+./bin/memoir capture --workspace ~/memoir --file ~/photos/1978.jpg --note "外婆家门口"
+```
+
+The material lands in `memories/inbox/` and the agent shapes it into a Memory
+Capture. The transcript stays on your machine: only the agent's short
+acknowledgement goes out through the channel.
+
+**Check the prose against the notes** before anything is published:
+
+```sh
+./bin/memoir lint --workspace ~/memoir
+```
+
+It reports concrete details in `chapters/` with no trace in `memories/` — a drifted
+date, a name that was never recorded, a quantity that appeared from nowhere — plus
+reconstructed dialogue to disclose in the author's note. It is a checklist, not a
+verdict; confirm each item or add it to `.memoir/lint-allow.txt`.
+
+Nudging is **adaptive, not mechanical**: if the writer stops replying, the scheduler
+backs off (3+ unanswered → every 2 days with a smaller, softer ask; 6+ → weekly) and
+any reply resets the rhythm. The writer stays in control with one word — replying
+「暂停」/"pause" stops nudges for two weeks, 「继续」/"resume" brings them back — or
+via `memoir care` (pause/resume, quiet dates for anniversaries, base cadence).
+
 ## Quick start — manual
 1. **Detect your environment**: `sh deployment/detect-runtime.sh` (or `./bin/memoir detect`)
    It reports which runtimes and schedulers are present and points you at an adapter.

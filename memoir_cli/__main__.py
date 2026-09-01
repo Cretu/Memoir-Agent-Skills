@@ -15,15 +15,21 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, detect as detect_mod, driver as driver_mod
-from . import notify as notify_mod, workspace as ws_mod
+from . import __version__, bundle as bundle_mod, capture as capture_mod
+from . import care as care_mod
+from . import detect as detect_mod, driver as driver_mod, lint as lint_mod
+from . import notify as notify_mod, resources as resources_mod
+from . import workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
 from .adapters.generic import GenericCronAdapter
 from .adapters.openclaw import OpenClawAdapter
 from .jobs import standard_jobs
 
-REPO = Path(__file__).resolve().parents[1]
+# Resolved lazily so an install without a bundle fails with a clear message
+# at the point of use, not at import time (`memoir --version` still works).
+def _repo() -> Path:
+    return resources_mod.repo_root()
 
 
 def _adapter_from(args) -> object:
@@ -51,7 +57,7 @@ def cmd_detect(args) -> int:
 
 def cmd_init(args) -> int:
     ws = Path(args.workspace).expanduser()
-    created = ws_mod.init(REPO, ws)
+    created = ws_mod.init(_repo(), ws)
     if created:
         print(f"initialized {ws}:")
         for c in created:
@@ -64,7 +70,7 @@ def cmd_init(args) -> int:
 def cmd_install(args) -> int:
     ws = Path(args.workspace).expanduser()
     adapter = _adapter_from(args)
-    installed = adapter.install_skills(REPO, ws)
+    installed = adapter.install_skills(_repo(), ws)
     print(f"installed {len(installed)} skills for {adapter.id}:")
     for name in installed:
         print(f"  + {name}")
@@ -100,6 +106,8 @@ def cmd_schedule(args) -> int:
         cfg["agent_cmd"] = args.agent_cmd
     cfg["quiet_from"] = args.quiet_from
     cfg["quiet_to"] = args.quiet_to
+    if getattr(args, "transcribe_cmd", ""):
+        cfg["transcribe_cmd"] = args.transcribe_cmd
     driver_mod.save_config(ws, cfg)
 
     print("artifacts:")
@@ -118,7 +126,7 @@ def cmd_schedule(args) -> int:
 def cmd_doctor(args) -> int:
     ws = Path(args.workspace).expanduser()
     adapter = _adapter_from(args)
-    checks = ws_mod.doctor(ws) + adapter.doctor(REPO, ws)
+    checks = ws_mod.doctor(ws) + adapter.doctor(_repo(), ws)
     failed = 0
     for c in checks:
         mark = "ok " if c.ok else "FAIL"
@@ -160,6 +168,105 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_capture(args) -> int:
+    ws = Path(args.workspace).expanduser()
+    run_agent = not args.no_agent
+    if args.text:
+        result = capture_mod.capture_text(ws, args.text, run_agent=run_agent,
+                                          timeout=args.timeout)
+    else:
+        src = Path(args.file).expanduser() if args.file else None
+        kind = args.kind
+        if kind == "auto":
+            kind = capture_mod.guess_kind(src)
+            if kind == "unknown":
+                raise SystemExit(
+                    f"cannot tell whether {src.name} is audio or a photo — "
+                    "pass --kind audio|photo"
+                )
+        if kind == "audio":
+            result = capture_mod.capture_voice(
+                ws, src, run_agent=run_agent,
+                transcribe_timeout=args.transcribe_timeout, timeout=args.timeout,
+            )
+        else:
+            result = capture_mod.capture_photo(
+                ws, src, note=args.note, run_agent=run_agent, timeout=args.timeout
+            )
+
+    print(f"captured -> {result.path.relative_to(ws)}")
+    if result.asset:
+        print(f"photo    -> {result.asset.relative_to(ws)}")
+    preview = result.text.strip().splitlines()[0][:80] if result.text.strip() else ""
+    if preview:
+        print(f"first line: {preview}")
+    if result.agent_ran:
+        if result.agent_output.strip():
+            print("\n" + result.agent_output.strip())
+        print(f"(delivered to the writer: {'yes' if result.delivered else 'no'})")
+    else:
+        print("(agent not run — shape it in your next session)")
+    return 0
+
+
+def cmd_bundle(args) -> int:
+    result = bundle_mod.build(
+        _repo(), Path(args.out).expanduser(), args.format, args.bundle_version
+    )
+    print(f"{result.format} bundle {result.version}: {result.path} "
+          f"({result.file_count} files)")
+    if result.path.is_dir():
+        ok, problems = bundle_mod.verify(result.path)
+        if problems:
+            for pr in problems:
+                print(f"  FAIL {pr}")
+            return 1
+        if ok:
+            print("  checksums verified against MANIFEST.json")
+    return 0
+
+
+def cmd_lint(args) -> int:
+    ws = Path(args.workspace).expanduser()
+    findings = lint_mod.lint_workspace(
+        ws,
+        chapters_dir=Path(args.chapters).expanduser() if args.chapters else None,
+        memories_dir=Path(args.memories).expanduser() if args.memories else None,
+    )
+    print(lint_mod.render(findings, as_json=args.format == "json"))
+    if args.fail_on == "never":
+        return 0
+    if args.fail_on == "any":
+        return 1 if findings else 0
+    return 1 if any(f.kind == lint_mod.KIND_UNSUPPORTED for f in findings) else 0
+
+
+def cmd_care(args) -> int:
+    import datetime as dt
+
+    ws = Path(args.workspace).expanduser()
+    if args.care_action == "show":
+        print(care_mod.render(care_mod.load(ws), dt.date.today()))
+    elif args.care_action == "pause":
+        until = (
+            dt.date.fromisoformat(args.until) if args.until
+            else dt.date.today() + dt.timedelta(days=args.days)
+        )
+        care_mod.set_pause(ws, until)
+        print(f"paused until {until.isoformat()} — no nudges before then")
+    elif args.care_action == "resume":
+        care_mod.clear_pause(ws)
+        print("resumed — nudges follow the usual cadence again")
+    elif args.care_action == "quiet":
+        care_mod.add_quiet_dates(ws, args.date_from, args.date_to or args.date_from,
+                                 args.reason)
+        print(f"quiet dates added: {args.date_from} → {args.date_to or args.date_from}")
+    elif args.care_action == "cadence":
+        care_mod.set_cadence(ws, args.per_week)
+        print(f"cadence set: {args.per_week} nudge(s)/week")
+    return 0
+
+
 def cmd_setup(args) -> int:
     rc = cmd_init(args)
     rc = rc or cmd_install(args)
@@ -190,6 +297,9 @@ def _add_schedule_opts(p: argparse.ArgumentParser) -> None:
                    help="generic: shell template with {prompt} placeholder")
     p.add_argument("--quiet-from", default="", help="no nudges from HH:MM (e.g. 22:00)")
     p.add_argument("--quiet-to", default="", help="no nudges until HH:MM (e.g. 08:00)")
+    p.add_argument("--transcribe-cmd", default="",
+                   help="voice capture: command printing a transcript, with {file} "
+                        "(e.g. 'whisper-cli -f {file} --no-timestamps')")
     p.add_argument("--apply", action="store_true",
                    help="activate the schedule now (claude-code: merge crontab)")
 
@@ -242,6 +352,66 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workspace", required=True)
     p.add_argument("--tail", type=int, default=5, help="show last N runs")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser(
+        "capture", help="voice note / photo / typed note -> raw material in memories/"
+    )
+    p.add_argument("--workspace", required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--file", default="", help="path to a voice note or photograph")
+    g.add_argument("--text", default="", help="a quick typed note")
+    p.add_argument("--kind", choices=["auto", "audio", "photo"], default="auto",
+                   help="how to treat --file (default: from its extension)")
+    p.add_argument("--note", default="", help="photo: what the writer said about it")
+    p.add_argument("--no-agent", action="store_true",
+                   help="just file it; don't ask the agent to shape it now")
+    p.add_argument("--timeout", type=float, default=driver_mod.DEFAULT_TIMEOUT)
+    p.add_argument("--transcribe-timeout", type=float,
+                   default=capture_mod.DEFAULT_TRANSCRIBE_TIMEOUT)
+    p.set_defaults(func=cmd_capture)
+
+    p = sub.add_parser(
+        "bundle", help="build a versioned skill bundle for a distribution channel"
+    )
+    p.add_argument("--format", choices=list(bundle_mod.FORMATS), default="tar")
+    p.add_argument("--out", default="dist", help="output directory (default: dist)")
+    p.add_argument("--bundle-version", default="",
+                   help="override the version (default: the package version)")
+    p.set_defaults(func=cmd_bundle)
+
+    p = sub.add_parser(
+        "lint", help="truth-contract check: concrete details in chapters/ with no "
+                     "trace in memories/"
+    )
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--chapters", default="", help="override the chapters directory")
+    p.add_argument("--memories", default="", help="override the memories directory")
+    p.add_argument("--format", choices=["text", "json"], default="text")
+    p.add_argument("--fail-on", choices=["never", "unsupported", "any"],
+                   default="never",
+                   help="exit non-zero on findings (default: never — it is advisory)")
+    p.set_defaults(func=cmd_lint)
+
+    p = sub.add_parser("care", help="pause/resume, quiet dates, cadence (the scheduler obeys)")
+    care_sub = p.add_subparsers(dest="care_action", required=True)
+    c = care_sub.add_parser("show", help="current care settings")
+    c.add_argument("--workspace", required=True)
+    c = care_sub.add_parser("pause", help="stop nudges for a while")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--days", type=int, default=care_mod.DEFAULT_PAUSE_DAYS)
+    c.add_argument("--until", default="", help="ISO date (overrides --days)")
+    c = care_sub.add_parser("resume", help="resume nudges")
+    c.add_argument("--workspace", required=True)
+    c = care_sub.add_parser("quiet", help="add quiet dates (e.g. an anniversary)")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--from", dest="date_from", required=True, help="ISO date")
+    c.add_argument("--to", dest="date_to", default="", help="ISO date (default: same day)")
+    c.add_argument("--reason", default="")
+    c = care_sub.add_parser("cadence", help="base nudges per week (1-7)")
+    c.add_argument("--workspace", required=True)
+    c.add_argument("--per-week", type=int, required=True)
+    for c in care_sub.choices.values():
+        c.set_defaults(func=cmd_care)
 
     p = sub.add_parser("setup", help="init + install + schedule in one command")
     _add_common(p)

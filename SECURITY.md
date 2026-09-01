@@ -9,6 +9,13 @@ vulnerabilities.
 - **All memoir content stays in the writer's workspace** (`memories/`, `chapters/`,
   `project_state.md`) on the machine running the agent. The skills never require
   sending manuscript content to third-party services beyond the model API itself.
+- **Captured voice and photos stay local.** `memoir capture` writes transcripts to
+  `memories/inbox/` and copies photographs into `memories/photos/` inside the
+  workspace. Transcription runs through a command *you* configure
+  (`--transcribe-cmd`) — no ASR service is bundled or contacted by default, so
+  audio leaves the machine only if you point it at a remote one. The capture
+  prompt instructs the agent to reply to the channel with a short
+  acknowledgement only, never the memory content.
 - **Chat channels are for nudges, not manuscripts.** Scheduled notifications
   (deployment layer, capability C4) route through third-party messaging providers.
   Adapters instruct keeping sensitive passages in local files and using the channel

@@ -22,6 +22,15 @@ WEEKLY_PROMPT = (
     + NO_PROSE_CLAUSE
 )
 
+# Appended to a nudge when the adaptive engine says the writer has gone quiet
+# (adaptive.py): back off in tone as well as frequency.
+SOFTEN_MODIFIER = (
+    " NOTE: the writer has not replied to recent nudges. Make the ask even "
+    "smaller — one sentence is enough. Be extra kind: no guilt, no pressure, no "
+    "mention of how long it has been. Gently acknowledge they may be busy, and "
+    "remind them they can reply 'pause' (暂停) to rest — the memories will keep."
+)
+
 # Used by `memoir run --reply` (driver.py): the writer answered a nudge.
 REPLY_PREAMBLE = (
     "The writer replied to a memoir nudge. As memoir-orchestrator: acknowledge "

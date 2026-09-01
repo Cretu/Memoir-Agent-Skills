@@ -182,6 +182,31 @@ def check_links(root: Path) -> None:
                 err(f"{md.relative_to(root)}: broken link -> {target}")
 
 
+def check_version_consistency(root: Path) -> None:
+    """The package version must have a matching CHANGELOG section.
+
+    One number for the package, the bundle and the changelog — a release whose
+    notes say nothing about it is how a version silently ships unexplained.
+    """
+    init = (root / "memoir_cli" / "__init__.py")
+    if not init.is_file():
+        return
+    m = re.search(r'__version__\s*=\s*"([^"]+)"', init.read_text(encoding="utf-8"))
+    if not m:
+        err("memoir_cli/__init__.py: no __version__ found")
+        return
+    version = m.group(1)
+    changelog = (root / "CHANGELOG.md")
+    if not changelog.is_file():
+        return
+    text = changelog.read_text(encoding="utf-8")
+    if version.endswith(("dev", "dev0")) or "dev" in version:
+        warn(f"version {version} is a pre-release; no CHANGELOG section required")
+    elif f"## [{version}]" not in text:
+        err(f"CHANGELOG.md has no section for version {version} "
+            f"(add '## [{version}] — <date>')")
+
+
 def check_required_docs(root: Path) -> None:
     for doc in REQUIRED_DOCS:
         if not (root / doc).exists():
@@ -197,6 +222,7 @@ def main() -> int:
     skill_dirs = check_skills(root)
     check_manifest(root, skill_dirs)
     check_required_docs(root)
+    check_version_consistency(root)
     check_links(root)
 
     for w in warnings:
