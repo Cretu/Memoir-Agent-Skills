@@ -23,7 +23,7 @@ Guiding idea for the next phases:
 | 3 | Caring adaptive drive | ✅ shipped (`adaptive.py` + `care.json` + `memoir care`) |
 | 4 | Voice-first capture | ✅ shipped (`memoir capture`) |
 | 5 | Quality & trust loop (evals + CI extensions) | ✅ shipped (`memoir lint` + golden corpus) |
-| 6 | Packaging & distribution | planned |
+| 6 | Packaging & distribution | ✅ shipped (`pip install`, `memoir bundle`) |
 
 ## Phase 1 — Contract-as-code + real installer ✅
 
@@ -134,13 +134,28 @@ Still open: LLM-judge rubrics for restraint and fairness of generated prose, and
 golden-conversation regressions for Orchestrator routing — both need a live model, so
 they belong with a runner that can call one rather than in this deterministic suite.
 
-## Phase 6 — Packaging & distribution
+## Phase 6 — Packaging & distribution ✅
 
-One source, three installs:
+One source, several installs:
 
-- OpenClaw **ClawHub** package · Claude Code **plugin** (marketplace) · **pip/npm**
-  package for the SDK route.
-- Semantic versioning + this changelog; the skill bundle becomes the versioned artifact.
+- **`pip install memoir-agent`** gives a `memoir` console script. The skill bundle
+  travels *inside* the wheel: `scripts/stage_bundle.py` stages it as package data and
+  `memoir_cli/resources.py` finds it at runtime, falling back from
+  `$MEMOIR_SKILLS_DIR` → packaged bundle → repository checkout, with a clear error
+  naming every place it looked. CI installs the wheel into a clean venv, `cd`s out of
+  the checkout entirely, and asserts a full `setup` lands all six skills.
+- **`memoir bundle --format tar|claude-plugin|openclaw`** builds the versioned
+  artifact each channel wants from that one source, so they cannot drift. Every bundle
+  carries a `MANIFEST.json` of sha256 checksums that `bundle.verify()` re-checks —
+  tamper detection is tested, not assumed.
+- **One version number** for the package, the bundles and the changelog: the repo
+  validator fails the build if a released `__version__` has no CHANGELOG section.
+  `RELEASING.md` documents the whole cut.
+
+Honest caveats: the Claude Code plugin layout is *written*, not validated against the
+live plugin schema — `RELEASING.md` says to run the local plugin tooling before
+publishing. Publishing itself is deliberately manual: no workflow holds registry
+credentials.
 
 ## Cross-cutting — security & privacy hardening (spans 1/2/4)
 

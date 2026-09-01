@@ -52,6 +52,22 @@ jobs:
           test -f "$WS/.memoir/cron.txt"
           test -x "$WS/.memoir/notify.sh"
 
+      - name: Build and install the wheel, then run it outside the checkout
+        run: |
+          python3 -m pip install --quiet build
+          python3 scripts/stage_bundle.py
+          python3 -m build --wheel
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet dist/*.whl
+          # the CLI must work with no checkout in sight: cd away from the repo
+          cd /tmp
+          /tmp/venv/bin/memoir --version
+          WS=/tmp/pkgws
+          /tmp/venv/bin/memoir setup --workspace "$WS" --adapter claude-code --notify file
+          test "$(find "$WS/.claude/skills" -name SKILL.md | wc -l)" -eq 6
+          /tmp/venv/bin/memoir bundle --format claude-plugin --out /tmp/bundles
+          test -f /tmp/bundles/memoir-agent/.claude-plugin/plugin.json
+
       - name: Shell syntax check
         run: sh -n deployment/detect-runtime.sh
 

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memoir-agent"
+description = "A self-driving, caring memoir-writing agent that runs on any agent runtime"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Cretu and Memoir Agent Skills contributors" }]
+keywords = ["memoir", "writing", "agent", "claude", "skills", "life-story"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: General",
+]
+# Deliberately dependency-free: the CLI is stdlib-only so it installs anywhere
+# and cannot break a writer's machine with a transitive upgrade.
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/Cretu/Memoir-Agent-Skills"
+Changelog = "https://github.com/Cretu/Memoir-Agent-Skills/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Cretu/Memoir-Agent-Skills/issues"
+
+[project.scripts]
+memoir = "memoir_cli.__main__:main"
+
+[tool.setuptools]
+packages = ["memoir_cli", "memoir_cli.adapters"]
+
+[tool.setuptools.dynamic]
+version = { attr = "memoir_cli.__version__" }
+
+# The skill bundle staged by scripts/stage_bundle.py travels with the wheel.
+[tool.setuptools.package-data]
+memoir_cli = ["_skills/**/*.md", "_skills/**/*.yaml", "_skills/**/*.yml"]

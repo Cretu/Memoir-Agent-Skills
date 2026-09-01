@@ -6,7 +6,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-01
+
+The release that turns the skills into an installable, self-driving product.
+
 ### Added
+- **Packaging** (ROADMAP Phase 6): `pip install memoir-agent` gives you a
+  `memoir` console script with the skill bundle travelling inside the wheel
+  (staged by `scripts/stage_bundle.py`, located at runtime by
+  `memoir_cli/resources.py`, which also honours `$MEMOIR_SKILLS_DIR`).
+  `memoir bundle --format tar|claude-plugin|openclaw` builds versioned
+  artifacts for each distribution channel from the one source, each with a
+  `MANIFEST.json` of sha256 checksums that `verify` re-checks.
 - **Truth-contract linter** (`memoir lint`, ROADMAP Phase 5): flags concrete
   details in `chapters/` — years, quantities (digits and spelled-out), proper
   names, quoted dialogue — that have no trace in `memories/`, so invented

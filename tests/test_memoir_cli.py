@@ -10,12 +10,14 @@ from pathlib import Path
 from shlex import quote as shlex_quote
 
 from memoir_cli import adaptive as adaptive_mod
+from memoir_cli import bundle as bundle_mod
 from memoir_cli import capture as capture_mod
 from memoir_cli import care as care_mod
 from memoir_cli import detect as detect_mod
 from memoir_cli import driver as driver_mod
 from memoir_cli import lint as lint_mod
 from memoir_cli import notify as notify_mod
+from memoir_cli import resources as resources_mod
 from memoir_cli import workspace as ws_mod
 from memoir_cli.adapters.claude_code import (
     ClaudeCodeAdapter,
@@ -690,6 +692,103 @@ class TestTruthContractLint(unittest.TestCase):
         text = lint_mod.render(self._run("chapters"))
         self.assertIn("not verdicts", text)
         self.assertIn("lint-allow.txt", text)
+
+
+class TestPackaging(unittest.TestCase):
+    """Distribution artifacts (Phase 6)."""
+
+    def test_bundle_formats_build_and_self_verify(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            for fmt in bundle_mod.FORMATS:
+                result = bundle_mod.build(REPO, out, fmt, version="9.9.9")
+                self.assertEqual(result.version, "9.9.9")
+                self.assertTrue(result.path.exists(), fmt)
+                if result.path.is_dir():
+                    ok, problems = bundle_mod.verify(result.path)
+                    self.assertTrue(ok, f"{fmt}: {problems}")
+
+    def test_manifest_describes_the_built_tree_not_the_source(self):
+        """Regression: openclaw nests skills under skills/, so a manifest built
+        from source-relative paths could not verify its own bundle."""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = bundle_mod.build(REPO, Path(tmp), "openclaw", version="1.0.0")
+            data = json.loads((result.path / "MANIFEST.json").read_text())
+            self.assertTrue(
+                all(rel.startswith(("skills/", "README")) for rel in data["files"]),
+                sorted(data["files"])[:3],
+            )
+            ok, problems = bundle_mod.verify(result.path)
+            self.assertTrue(ok, problems)
+
+    def test_verify_detects_tampering(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = bundle_mod.build(REPO, Path(tmp), "openclaw", version="1.0.0")
+            skill = result.path / "skills" / "memoir-orchestrator" / "SKILL.md"
+            skill.write_text(skill.read_text(encoding="utf-8") + "\nTAMPERED\n",
+                             encoding="utf-8")
+            ok, problems = bundle_mod.verify(result.path)
+            self.assertFalse(ok)
+            self.assertIn("checksum mismatch", problems[0])
+
+    def test_claude_plugin_manifest_shape(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = bundle_mod.build(REPO, Path(tmp), "claude-plugin", version="2.0.0")
+            plugin = json.loads(
+                (result.path / ".claude-plugin" / "plugin.json").read_text()
+            )
+            self.assertEqual(plugin["name"], "memoir-agent")
+            self.assertEqual(plugin["version"], "2.0.0")
+            self.assertTrue(plugin["description"])
+            market = json.loads(
+                (result.path / ".claude-plugin" / "marketplace.json").read_text()
+            )
+            self.assertEqual(market["plugins"][0]["version"], "2.0.0")
+            # all six skills present under skills/
+            for name in SKILL_DIRS:
+                self.assertTrue(
+                    (result.path / "skills" / name / "SKILL.md").is_file(), name
+                )
+            # shared docs at the plugin root, exactly once (not duplicated)
+            self.assertTrue((result.path / "memoir-ethics-and-care.md").is_file())
+            self.assertFalse(
+                (result.path / "skills" / "memoir-ethics-and-care.md").exists()
+            )
+
+    def test_unknown_format_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit):
+                bundle_mod.build(REPO, Path(tmp), "npm")
+
+    def test_resources_prefers_env_override_and_reports_source(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / "bundle"
+            (fake / "memoir-orchestrator").mkdir(parents=True)
+            (fake / "orchestration.md").write_text("x", encoding="utf-8")
+            (fake / "memoir-orchestrator" / "SKILL.md").write_text("x", encoding="utf-8")
+            old = os.environ.get("MEMOIR_SKILLS_DIR")
+            os.environ["MEMOIR_SKILLS_DIR"] = str(fake)
+            try:
+                self.assertEqual(resources_mod.repo_root(), fake)
+                self.assertIn("MEMOIR_SKILLS_DIR", resources_mod.describe())
+            finally:
+                if old is None:
+                    del os.environ["MEMOIR_SKILLS_DIR"]
+                else:
+                    os.environ["MEMOIR_SKILLS_DIR"] = old
+
+    def test_incomplete_bundle_is_not_accepted_as_a_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            half = Path(tmp)
+            (half / "orchestration.md").write_text("x", encoding="utf-8")
+            self.assertFalse(resources_mod._is_bundle_root(half))
+
+    def test_version_has_a_changelog_section(self):
+        from memoir_cli import __version__
+        changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+        if "dev" not in __version__:
+            self.assertIn(f"## [{__version__}]", changelog)
 
 
 class TestDetect(unittest.TestCase):

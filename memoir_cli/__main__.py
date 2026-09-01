@@ -15,16 +15,21 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, capture as capture_mod, care as care_mod
+from . import __version__, bundle as bundle_mod, capture as capture_mod
+from . import care as care_mod
 from . import detect as detect_mod, driver as driver_mod, lint as lint_mod
-from . import notify as notify_mod, workspace as ws_mod
+from . import notify as notify_mod, resources as resources_mod
+from . import workspace as ws_mod
 from .adapters import ADAPTERS, auto_pick, get_adapter
 from .adapters.claude_code import ClaudeCodeAdapter
 from .adapters.generic import GenericCronAdapter
 from .adapters.openclaw import OpenClawAdapter
 from .jobs import standard_jobs
 
-REPO = Path(__file__).resolve().parents[1]
+# Resolved lazily so an install without a bundle fails with a clear message
+# at the point of use, not at import time (`memoir --version` still works).
+def _repo() -> Path:
+    return resources_mod.repo_root()
 
 
 def _adapter_from(args) -> object:
@@ -52,7 +57,7 @@ def cmd_detect(args) -> int:
 
 def cmd_init(args) -> int:
     ws = Path(args.workspace).expanduser()
-    created = ws_mod.init(REPO, ws)
+    created = ws_mod.init(_repo(), ws)
     if created:
         print(f"initialized {ws}:")
         for c in created:
@@ -65,7 +70,7 @@ def cmd_init(args) -> int:
 def cmd_install(args) -> int:
     ws = Path(args.workspace).expanduser()
     adapter = _adapter_from(args)
-    installed = adapter.install_skills(REPO, ws)
+    installed = adapter.install_skills(_repo(), ws)
     print(f"installed {len(installed)} skills for {adapter.id}:")
     for name in installed:
         print(f"  + {name}")
@@ -121,7 +126,7 @@ def cmd_schedule(args) -> int:
 def cmd_doctor(args) -> int:
     ws = Path(args.workspace).expanduser()
     adapter = _adapter_from(args)
-    checks = ws_mod.doctor(ws) + adapter.doctor(REPO, ws)
+    checks = ws_mod.doctor(ws) + adapter.doctor(_repo(), ws)
     failed = 0
     for c in checks:
         mark = "ok " if c.ok else "FAIL"
@@ -201,6 +206,23 @@ def cmd_capture(args) -> int:
         print(f"(delivered to the writer: {'yes' if result.delivered else 'no'})")
     else:
         print("(agent not run — shape it in your next session)")
+    return 0
+
+
+def cmd_bundle(args) -> int:
+    result = bundle_mod.build(
+        _repo(), Path(args.out).expanduser(), args.format, args.bundle_version
+    )
+    print(f"{result.format} bundle {result.version}: {result.path} "
+          f"({result.file_count} files)")
+    if result.path.is_dir():
+        ok, problems = bundle_mod.verify(result.path)
+        if problems:
+            for pr in problems:
+                print(f"  FAIL {pr}")
+            return 1
+        if ok:
+            print("  checksums verified against MANIFEST.json")
     return 0
 
 
@@ -347,6 +369,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--transcribe-timeout", type=float,
                    default=capture_mod.DEFAULT_TRANSCRIBE_TIMEOUT)
     p.set_defaults(func=cmd_capture)
+
+    p = sub.add_parser(
+        "bundle", help="build a versioned skill bundle for a distribution channel"
+    )
+    p.add_argument("--format", choices=list(bundle_mod.FORMATS), default="tar")
+    p.add_argument("--out", default="dist", help="output directory (default: dist)")
+    p.add_argument("--bundle-version", default="",
+                   help="override the version (default: the package version)")
+    p.set_defaults(func=cmd_bundle)
 
     p = sub.add_parser(
         "lint", help="truth-contract check: concrete details in chapters/ with no "
